@@ -67,7 +67,7 @@ button{font-family:inherit;cursor:pointer}
 
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:24px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);text-align:center}
 .kpi .l{font-size:13px;color:var(--muted);font-weight:700}
 .kpi .n{font-size:36px;font-weight:800;margin-top:6px;letter-spacing:-1px}
 .kpi .d{font-size:12px;margin-top:4px;color:var(--accent)}
@@ -293,7 +293,7 @@ img.chr{object-fit:contain}
 .icn.big{width:58px;height:58px}
 .icn.xbig{width:96px;height:96px}
 .kpi .d .icn{width:18px;height:18px;vertical-align:-4px;margin-right:3px}
-.kpi .l{display:flex;align-items:center;gap:5px}
+.kpi .l{display:flex;align-items:center;justify-content:center;gap:5px}
 .kpi .l .icn{width:24px;height:24px}
 .kpi .n .permax{font-size:.42em;color:var(--muted);font-weight:700;margin-left:2px}
 .panel h3 .icnwrap{display:inline-flex;vertical-align:middle;margin-right:6px}
@@ -336,8 +336,7 @@ img.chr{object-fit:contain}
   .navi .ic{display:block;font-size:28px;width:auto;line-height:1}
   .navi button{position:relative}
   .navi button.on{background:var(--accent-soft);color:var(--accent-deep);box-shadow:none;font-weight:800}
-  .navi button.on .ic{transform:scale(1.08)}
-  .navi button.on::before{content:"";position:absolute;top:3px;left:50%;transform:translateX(-50%);width:26px;height:3px;border-radius:99px;background:var(--accent)}
+  .navi button.on::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:3px;border-radius:99px;background:var(--accent)}
   /* 本文：下部バーに隠れないよう余白を確保 */
   .main{padding:16px 15px calc(84px + env(safe-area-inset-bottom));max-width:100%}
   .top{margin-bottom:16px;--title-size:22px}
@@ -385,7 +384,7 @@ img.chr{object-fit:contain}
     <section id="dash" class="hidden">
       <div class="kpis" id="kpis"></div>
       <div class="row2">
-        <div class="panel"><h3><span class="icnwrap" data-icon="heart"></span>最近のお気に入り</h3><div id="recentFav"></div></div>
+        <div class="panel"><h3>最近のお気に入り</h3><div id="recentFav"></div></div>
         <div class="panel"><h3>ジャンル別の冊数</h3><div id="genreChart"></div></div>
       </div>
       <div class="panel"><h3>ジャンル別・平均満足度（お子さんの反応）</h3><div id="genreAvg"></div></div>
@@ -1228,7 +1227,7 @@ async function lookupByISBN(isbn){
     return null;
   })();
   const ndlP=(async()=>{
-    const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn,6000);
+    const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn,9000);
     if(!r.ok)return null;
     const x=await r.text();
     const items=[...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m=>m[1]);
@@ -1253,7 +1252,18 @@ async function registerByISBN(isbn){
   // ① まず登録フォームをすぐ開く（メモ等は待たずに編集できる）
   openAdd();
   const fi=document.getElementById("fIsbn"); if(fi)fi.value=isbn;
-  // 読み取り中：タイトル・作者は「読み取り中…」表示にして編集不可に
+  await fillFromISBN(isbn);   // ② ISBN照合して空欄を埋める
+}
+// 見つからない/通信不可のときの表紙ボックス（もう一度さがす＋撮影）。ISBNは数字のみなのでonclickに安全に埋め込める
+function isbnRetryBox(isbn){
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+    <div class="cprevempty">情報が取得できませんでした</div>
+    <button type="button" class="btn soft" onclick="fillFromISBN('${isbn}')">🔄 もう一度さがす</button>
+    <div class="cprevempty" style="font-size:12px;max-width:270px;line-height:1.5">検索サーバーが一時的に混み合うことがあります。もう一度さがすと見つかることが多いです。</div>
+    <button type="button" class="btn soft dcapbtn" onclick="captureCoverForm()">📷 表紙を撮影する</button></div>`;
+}
+// ISBN照合してフォームの空欄を埋める（フォームは既に開いている前提。再試行でも入力は保持）
+async function fillFromISBN(isbn){
   const setReading=on=>["fTitle","fAuthor"].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
     if(on){ if(el.dataset.ph==null)el.dataset.ph=el.placeholder||""; el.value=""; el.placeholder="読み取り中…"; el.disabled=true; el.classList.add("reading"); }
@@ -1262,7 +1272,6 @@ async function registerByISBN(isbn){
   setReading(true);
   const prev=document.getElementById("coverPrev");
   if(prev)prev.innerHTML='<div class="cprevempty">📚 読み取り中…</div>';
-  // ② ISBN照合（タイムアウトで最長でも約10秒）
   let meta=null; try{ meta=await lookupByISBN(isbn); }catch(e){}
   // フォームが閉じられていたら（保存/キャンセル済み）何もしない
   const overlay=document.getElementById("overlay"), ti=document.getElementById("fTitle");
@@ -1275,11 +1284,11 @@ async function registerByISBN(isbn){
     if(prev)prev.innerHTML=coverBoxHtml((fc&&fc.value)||"");
     toast("情報を反映しました。内容を確かめて記録してください 📖");
   }else if(meta&&meta.reached===false){
-    if(prev)prev.innerHTML=coverBoxHtml("");
-    toast("📶 通信できませんでした。もう一度お試しいただくか、手入力してください");
+    if(prev)prev.innerHTML=isbnRetryBox(isbn);
+    toast("📶 通信できませんでした。「もう一度さがす」をお試しください");
   }else{
-    if(prev)prev.innerHTML=coverBoxHtml("");
-    toast("このISBNの情報が見つかりませんでした。手入力で調整してください");
+    if(prev)prev.innerHTML=isbnRetryBox(isbn);
+    toast("見つかりませんでした。混雑していることがあります。「もう一度さがす」をお試しください");
   }
 }
 
