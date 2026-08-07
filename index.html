@@ -199,6 +199,8 @@ mark{background:#fff2b8;border-radius:3px;padding:0 2px}
 .sresult .btn{flex:none;padding:8px 12px;font-size:12px}
 .findrow{display:flex;gap:10px;align-items:center}
 .findrow .btn{flex:none;white-space:nowrap}
+/* 検索結果リストは独立してスクロール（見出し・閉じるボタンは固定） */
+#sResults,#isbnResults{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 
 /* ===== 本棚（表紙ギャラリー） ===== */
 .camrow{display:flex;gap:10px;margin-bottom:14px}
@@ -1001,15 +1003,30 @@ async function searchGB(query){
   }
   return out;
 }
-// NDLとGBを並列実行（各≤9秒）。両方到達不可なら通信エラーを投げ、そうでなければ結果をマージして返す
+// ③ Open Library（英語の絵本に強い無料DB。NDL/GBの取りこぼしを補う。タイムアウト短め＝並列なので全体の検索時間は延ばさない）
+async function searchOL(query){
+  const out=[];
+  const r=await fetchT("https://openlibrary.org/search.json?limit=12&fields=title,author_name,isbn,cover_i&q="+encodeURIComponent(query),5000);
+  if(!r.ok)return out;
+  let j; try{ j=await r.json(); }catch(e){ return out; }
+  if(j&&j.docs)for(const d of j.docs){
+    if(!d.title)continue;
+    let isbn=""; if(d.isbn)isbn=(d.isbn.find(x=>/^97[89]\d{10}$/.test(x))||d.isbn[0]||"").replace(/[^0-9Xx]/g,"");
+    const cover=d.cover_i?("https://covers.openlibrary.org/b/id/"+d.cover_i+"-M.jpg"):(isbn?amznCover(isbn)||"":"");
+    out.push({title:d.title,author:(d.author_name&&d.author_name.join("、"))||"",isbn,cover});
+  }
+  return out;
+}
+// NDL・GB・Open Library を並列実行。全て到達不可なら通信エラー、そうでなければ結果をマージ（OLは短いタイムアウトなので全体の検索時間は変わらない）
 async function searchTitles(query){
-  const [rn,rg]=await Promise.allSettled([searchNDL(query),searchGB(query)]);
+  const [rn,rg,ro]=await Promise.allSettled([searchNDL(query),searchGB(query),searchOL(query)]);
   const ndl=rn.status==="fulfilled"?rn.value:null;
   const gb =rg.status==="fulfilled"?rg.value:null;
-  if(ndl===null&&gb===null){ const e=new Error("通信できませんでした"); e.network=true; throw e; }
-  // NDL優先でマージ（ISBN＋タイトルで重複除外）
+  const ol =ro.status==="fulfilled"?ro.value:null;
+  if(ndl===null&&gb===null&&ol===null){ const e=new Error("通信できませんでした"); e.network=true; throw e; }
+  // NDL→GB→OL の順でマージ（ISBN＋タイトルで重複除外）
   const out=[], seen=new Set();
-  for(const b of [...(ndl||[]),...(gb||[])]){
+  for(const b of [...(ndl||[]),...(gb||[]),...(ol||[])]){
     const k=(b.isbn||"")+"|"+(b.title||""); if(seen.has(k))continue; seen.add(k); out.push(b);
   }
   const q=query.trim();
@@ -1094,7 +1111,7 @@ async function runISBNSearch(){
   box.innerHTML=searchingHTML("えほんを さがしています…");
   let meta=null;try{meta=await lookupByISBN(isbn);}catch(e){}
   if(!meta||meta.reached===false){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
-  if(!meta.found){box.innerHTML='<div class="cprevempty">この ISBN の絵本が見つかりませんでした。番号をご確認いただくか、「タイトル・作者から探す」「手入力」をお試しください。</div>';return;}
+  if(!meta.found){box.innerHTML='<div class="cprevempty">見つかりませんでした。検索サーバーが一時的に混み合うことがあるので、上の「🔎 検索」でもう一度お試しください。番号のご確認・「タイトル・作者から探す」・手入力もできます。</div>';return;}
   window.__isbnResult=meta;
   box.innerHTML=`<div class="sresult">
       ${meta.cover?`<img src="${esc(meta.cover)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}
@@ -1134,7 +1151,7 @@ async function runTitleSearch(){
   try{results=await searchTitles(q);}catch(e){ netErr=!!(e&&e.network); }
   window.__searchResults=results;
   if(netErr){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
-  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした。言葉を変えるか「手入力で記録」をお試しください。</div>';return;}
+  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした。検索サーバーが一時的に混み合うことがあるので、上の「🔎 再検索」でもう一度お試しください。言葉を変えたり、手入力で記録することもできます。</div>';return;}
   box.innerHTML=results.map((b,i)=>
     `<div class="sresult">
       ${b.cover?`<img src="${esc(b.cover)}" onload="if(this.naturalWidth<=2)this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}
@@ -1240,9 +1257,21 @@ async function lookupByISBN(isbn){
     }
     return null;
   })();
-  const [rg,rn]=await Promise.allSettled([gbP,ndlP]);
-  const reached = rg.status==="fulfilled" || rn.status==="fulfilled";   // サーバに到達できたか
-  const hit = (rg.status==="fulfilled"&&rg.value) || (rn.status==="fulfilled"&&rn.value) || null;  // GB優先
+  // Open Library（英語版ISBNに強い。短いタイムアウトなので全体の照合時間は延ばさない）
+  const olP=(async()=>{
+    const r=await fetchT("https://openlibrary.org/api/books?format=json&jscmd=data&bibkeys=ISBN:"+isbn,5000);
+    if(!r.ok)return null;
+    const j=await r.json();
+    const d=j["ISBN:"+isbn];
+    if(d&&d.title){
+      const cover=(d.cover&&(d.cover.medium||d.cover.large||d.cover.small))||amznCover(isbn)||"";
+      return {title:d.title,author:(d.authors&&d.authors.map(a=>a.name).join("、"))||"",isbn,cover};
+    }
+    return null;
+  })();
+  const [rg,rn,ro]=await Promise.allSettled([gbP,ndlP,olP]);
+  const reached = rg.status==="fulfilled" || rn.status==="fulfilled" || ro.status==="fulfilled";   // サーバに到達できたか
+  const hit = (rg.status==="fulfilled"&&rg.value) || (rn.status==="fulfilled"&&rn.value) || (ro.status==="fulfilled"&&ro.value) || null;  // GB→NDL→OL
   if(hit)return {title:hit.title,author:hit.author,isbn,cover:hit.cover,found:true,reached:true};
   // 見つからず（当て推量の表紙は付けない：中身なしで表紙だけ出る誤解を防ぐ）
   return {title:"",author:"",isbn,cover:"",found:false,reached};
@@ -1283,12 +1312,9 @@ async function fillFromISBN(isbn){
     const fc=document.getElementById("fCover");
     if(prev)prev.innerHTML=coverBoxHtml((fc&&fc.value)||"");
     toast("情報を反映しました。内容を確かめて記録してください 📖");
-  }else if(meta&&meta.reached===false){
-    if(prev)prev.innerHTML=isbnRetryBox(isbn);
-    toast("📶 通信できませんでした。「もう一度さがす」をお試しください");
   }else{
+    // 見つからない/通信不可：画面の再検索ボックスに案内を出す（トーストは出さない）
     if(prev)prev.innerHTML=isbnRetryBox(isbn);
-    toast("見つかりませんでした。混雑していることがあります。「もう一度さがす」をお試しください");
   }
 }
 
