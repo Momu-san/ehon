@@ -71,6 +71,14 @@ button{font-family:inherit;cursor:pointer}
 .kpi .l{font-size:13px;color:var(--muted);font-weight:700}
 .kpi .n{font-size:36px;font-weight:800;margin-top:6px;letter-spacing:-1px}
 .kpi .d{font-size:12px;margin-top:4px;color:var(--accent)}
+/* 記録した絵本：全幅の一列で本の記録／読みたい本を並記 */
+.kpi-wide{grid-column:1/-1;text-align:center}
+.kpi-wide .l{justify-content:center}
+.kpi-wide .tcwrap{gap:0;justify-content:space-around;max-width:340px;margin:8px auto 0}
+.kpi .tcwrap{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.kpi .tc-n{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1}
+.kpi .tc-n small{font-size:.44em;font-weight:800;color:var(--muted);margin-left:1px}
+.kpi .tc-l{font-size:12px;font-weight:700;color:var(--muted);margin-top:3px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:22px}
 .panel h3{font-size:17px;font-weight:800;margin-bottom:16px}
 .pdesc{color:var(--muted);font-size:13px;margin:-8px 0 16px}
@@ -326,7 +334,10 @@ img.chr{object-fit:contain}
     border-radius:14px;justify-content:center;align-items:center;text-align:center;
     color:var(--muted);min-height:52px}
   .navi .ic{display:block;font-size:28px;width:auto;line-height:1}
-  .navi button.on{background:var(--accent-soft);color:var(--accent-deep);box-shadow:none}
+  .navi button{position:relative}
+  .navi button.on{background:var(--accent-soft);color:var(--accent-deep);box-shadow:none;font-weight:800}
+  .navi button.on .ic{transform:scale(1.08)}
+  .navi button.on::before{content:"";position:absolute;top:3px;left:50%;transform:translateX(-50%);width:26px;height:3px;border-radius:99px;background:var(--accent)}
   /* 本文：下部バーに隠れないよう余白を確保 */
   .main{padding:16px 15px calc(84px + env(safe-area-inset-bottom));max-width:100%}
   .top{margin-bottom:16px;--title-size:22px}
@@ -371,11 +382,6 @@ img.chr{object-fit:contain}
   </aside>
 
   <main class="main">
-    <div class="top">
-      <div class="titlewrap"><div><div class="titlerow"><h2 id="pgTitle">本の記録</h2><span id="bookCount" class="cbadge"></span></div><p id="pgSub"></p></div></div>
-      <div class="who"><span class="av">👩</span></div>
-    </div>
-
     <section id="dash" class="hidden">
       <div class="kpis" id="kpis"></div>
       <div class="row2">
@@ -409,7 +415,6 @@ img.chr{object-fit:contain}
           <button class="btn soft" onclick="document.getElementById('backupInput').click()"><span class="icnwrap" data-icon="restore"></span>バックアップから復元</button>
         </div>
       </div>
-      <input type="file" id="fileInput" accept=".xlsx,.csv" style="display:none">
       <input type="file" id="backupInput" accept=".json,application/json" style="display:none">
     </section>
   </main>
@@ -532,8 +537,6 @@ document.querySelectorAll("#navi button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("#navi button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
   const t=b.dataset.t;
   ["dash","books","wish","batch"].forEach(id=>document.getElementById(id).classList.toggle("hidden",id!==t));
-  document.getElementById("pgTitle").textContent=T[t][0];document.getElementById("pgSub").textContent=T[t][1];
-  document.getElementById("bookCount").style.display=(t==="books"||t==="wish")?"":"none";  // 総数バッジは本棚ページのみ
   document.getElementById("addWrap").style.display=(t==="books"||t==="wish")?"":"none";     // 追加ボタンは本棚ページのみ
   closeAddMenu();
   updateCount();
@@ -550,9 +553,16 @@ function hl(s,q){if(!q)return s;const re=new RegExp("("+q.replace(/[.*+?^${}()|[
 
 /* ===== ダッシュボード ===== */
 function renderDash(){
-  const bs=DB.books;
-  if(!bs.length){ // 0冊のときはグラフを描かない（例外で他の画面が止まるのを防ぐ）
-    document.getElementById("kpis").innerHTML=`<div class="kpi"><div class="l">記録した絵本</div><div class="n">0冊</div><div class="d">📚 まずは1冊記録してみましょう</div></div>`;
+  const bs=DB.books.filter(b=>!b.wish);            // 記録した絵本（読みたい本を除く）
+  const wishN=DB.books.length-bs.length;           // 読みたい本の冊数
+  // 「記録した絵本」＝本の記録／読みたい本を並記
+  const kpiCount=`<div class="kpi kpi-wide"><div class="l">${icon("books")||"📚 "}記録した絵本</div>
+    <div class="tcwrap">
+      <div><div class="tc-n">${bs.length}<small>冊</small></div><div class="tc-l">本の記録</div></div>
+      <div><div class="tc-n">${wishN}<small>冊</small></div><div class="tc-l">読みたい本</div></div>
+    </div></div>`;
+  if(!bs.length){ // 記録した絵本が0冊のときはグラフを描かない（例外で他の画面が止まるのを防ぐ）
+    document.getElementById("kpis").innerHTML=kpiCount;
     document.getElementById("genreChart").innerHTML='<div class="empty">まだ記録がありません</div>';
     document.getElementById("recentFav").innerHTML='<div class="empty">まだ記録がありません</div>';
     document.getElementById("genreAvg").innerHTML='<div class="empty">まだ記録がありません</div>';
@@ -560,8 +570,7 @@ function renderDash(){
   }
   const favN=bs.filter(b=>b.fav).length;
   const avg=(bs.reduce((s,b)=>s+scoreOf(b),0)/bs.length).toFixed(1);
-  document.getElementById("kpis").innerHTML=[
-    [(icon("books")||"📚 ")+"記録した絵本",bs.length+"冊"],
+  document.getElementById("kpis").innerHTML=kpiCount+[
     [(icon("heart")||"💛 ")+"お気に入り",favN+"冊"],
     [(icon("star")||"⭐ ")+"平均満足度",avg+'<small class="permax">/5</small>'],
   ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="n">${k[1]}</div></div>`).join("");
@@ -652,7 +661,7 @@ function openDetail(i){
       <button class="btn ghost" onclick="toggleFav(${i});openDetail(${i})">${b.fav?'★ お気に入り解除':'☆ お気に入り'}</button>
       <button class="btn primary" onclick="openEdit(${i})">✎ 編集</button>
     </div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
 }
 // 読みたい本の詳細（お気に入り・反応なし。「読んだ」で本の記録へ移す）
 function openWishDetail(i){
@@ -681,7 +690,7 @@ function openWishDetail(i){
       <button class="btn ghost" onclick="openEdit(${i})">✎ 編集</button>
       <button class="btn ok" onclick="markAsRead(${i})">📖 読んだ</button>
     </div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
 }
 // 「読んだ」→ 本の記録へ移動（読んだ日を今日にし、反応の初期値を用意）
 function markAsRead(i){
@@ -768,7 +777,7 @@ function openBookModal(i){
        ${b?`<button class="btn danger" style="margin-right:auto" onclick="deleteBook(${i})">削除</button>`:''}
        <button class="btn ghost" onclick="closeModal()">キャンセル</button>
        <button class="btn primary" onclick="saveBook(${i})">${b?'保存する':(wish?'追加する':'記録する')}</button></div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
   // Enterキーでも保存できるように（入力欄で改行できないため戸惑いやすい）
   document.getElementById("modalBox").onkeydown=e=>{
     if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();saveBook(i);}
@@ -777,35 +786,6 @@ function openBookModal(i){
 }
 function openAdd(){openBookModal(-1);}
 function openEdit(i){openBookModal(i);}
-// タイトルからISBNを検索し、見つかればタイトル・作者・表紙を上書き
-async function fetchIsbnFromTitle(){
-  const title=document.getElementById("fTitle").value.trim();
-  if(!title){toast("タイトルを入力してください");return;}
-  toast("タイトルからISBNを検索中… 🔎");
-  let res=[]; try{res=await searchTitles(title);}catch(e){}
-  if(res&&res.length){
-    const b=res[0], set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
-    set("fIsbn",b.isbn);set("fTitle",b.title);set("fAuthor",b.author);set("fCover",b.cover);
-    const prev=document.getElementById("coverPrev");if(prev)prev.innerHTML=coverBoxHtml(b.cover||"");
-    toast(b.isbn?("見つかりました：ISBN "+b.isbn):"情報を反映しました（ISBNは見つかりませんでした）");
-  }else toast("見つかりませんでした。タイトルを変えてお試しください");
-}
-// ISBNから表紙を自動取得（取得できたら作者も上書き）
-async function modalFetchCover(){
-  const isbn=document.getElementById("fIsbn").value.trim();
-  const prev=document.getElementById("coverPrev");
-  if(!isbn){prev.innerHTML='<div class="cprevempty">ISBNを入力してください（上の「タイトルからISBNを検索する」でも取得できます）</div>';toast("ISBNを入力してください");return;}
-  prev.innerHTML='<div class="cprevempty">取得中… 🔍</div>';
-  const meta=await lookupByISBN(isbn);
-  const url=(meta&&meta.cover)||amznCover(isbn)||"";
-  if(url&&await verifyImg(url)){
-    document.getElementById("fCover").value=url;
-    if(meta&&meta.author){const a=document.getElementById("fAuthor");if(a)a.value=meta.author;}   // 作者も上書き
-    prev.innerHTML=coverPrevHtml(url);toast("表紙を取得しました 🖼");
-  }else{
-    prev.innerHTML='<div class="cprevempty">このISBNの表紙は見つかりませんでした。別のISBNを試すか、画像URLを入力してください</div>';toast("表紙を取得できませんでした");
-  }
-}
 function saveBook(i){
  try{
   const v=id=>{const el=document.getElementById(id);return el?el.value:"";};
@@ -891,123 +871,36 @@ function openModal(title,body,okLabel,okCls,onOk,cancelLabel){
     <div class="mbtns"><button class="btn ghost" onclick="closeModal()">${cancelLabel||"キャンセル"}</button>
       <button class="btn ${okCls}" id="mOk">${okLabel}</button></div>`;
   document.getElementById("mOk").onclick=onOk;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
 }
-function closeModal(){scannerStop();document.getElementById("overlay").classList.remove("show");}
+let __closingByCode=false;
+// モーダル表示：戻る操作（スワイプ/バックボタン）で閉じられるよう履歴を1つ積む
+function showOverlay(){
+  const ov=document.getElementById("overlay");
+  const wasShown=ov.classList.contains("show");
+  ov.classList.add("show");
+  if(!wasShown){ try{ history.pushState({ehonModal:1},""); }catch(e){} }
+}
+function closeModal(){
+  scannerStop();
+  const ov=document.getElementById("overlay");
+  const wasShown=ov.classList.contains("show");
+  ov.classList.remove("show");
+  // ボタン等で閉じたら、積んだ履歴も戻して同期（popstateは下のガードで無害化）
+  if(wasShown && history.state && history.state.ehonModal){ __closingByCode=true; try{history.back();}catch(e){__closingByCode=false;} }
+}
+// 端末の「戻る（右→左スワイプ等）」：モーダルが開いていれば閉じる＝ページ離脱を防ぐ
+window.addEventListener("popstate",function(){
+  if(__closingByCode){ __closingByCode=false; return; }
+  const ov=document.getElementById("overlay");
+  if(ov&&ov.classList.contains("show")){ scannerStop(); ov.classList.remove("show"); }
+});
 document.getElementById("overlay").onclick=e=>{if(e.target.id==="overlay")closeModal();};
 
-/* ===== 一括インポート（Excel .xlsx / CSV）＆テンプレート ===== */
-const IMPORT_COLS=[ // ヘッダー語 → フィールド
-  {key:"title",  match:h=>h.includes("タイトル")},
-  {key:"author", match:h=>h.includes("作者")},
-  {key:"genre",  match:h=>h.includes("ジャンル")},
-  {key:"isbn",   match:h=>/isbn/i.test(h)},
-  {key:"react",  match:h=>h.includes("反応")},
-  {key:"fav",    match:h=>h.includes("気に入")},
-  {key:"d",      match:h=>h.includes("記録日")||h.includes("日")},
-];
-function colToIndex(ref){ // "B12" -> 1 (0始まり)
-  const m=(ref||"").match(/^([A-Z]+)/); if(!m)return 0;
-  let n=0; for(const ch of m[1]) n=n*26+(ch.charCodeAt(0)-64); return n-1;
-}
+/* ===== 検索結果パース用ユーティリティ ===== */
 function xmlUnesc(s){return (s||"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#10;/g,"\n").replace(/&amp;/g,"&");}
 
-// ---- .xlsx 解凍（ブラウザ標準 DecompressionStream・鍵/ライブラリ不要）----
-async function inflateRaw(bytes){
-  const s=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(s).arrayBuffer());
-}
-async function readXlsx(ab){
-  const dv=new DataView(ab), u8=new Uint8Array(ab), td=new TextDecoder("utf-8");
-  let eocd=-1; for(let i=u8.length-22;i>=0;i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
-  if(eocd<0)throw new Error("xlsx形式ではありません");
-  const cnt=dv.getUint16(eocd+10,true), off=dv.getUint32(eocd+16,true);
-  const entries={}; let p=off;
-  for(let n=0;n<cnt;n++){
-    if(dv.getUint32(p,true)!==0x02014b50)break;
-    const method=dv.getUint16(p+10,true), compSize=dv.getUint32(p+20,true);
-    const nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
-    const lho=dv.getUint32(p+42,true);
-    entries[td.decode(u8.subarray(p+46,p+46+nl))]={method,compSize,lho};
-    p+=46+nl+el+cl;
-  }
-  async function read(name){
-    const e=entries[name]; if(!e)return null;
-    const nl=dv.getUint16(e.lho+26,true), el=dv.getUint16(e.lho+28,true);
-    const st=e.lho+30+nl+el, data=u8.subarray(st,st+e.compSize);
-    return td.decode(e.method===0?data:await inflateRaw(data));
-  }
-  // 共有文字列
-  const ssXml=await read("xl/sharedStrings.xml"); const shared=[];
-  if(ssXml){const siRe=/<si>([\s\S]*?)<\/si>/g; let m;
-    while((m=siRe.exec(ssXml))){const t=[...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>xmlUnesc(x[1])).join("");shared.push(t);}}
-  // シート（最初のworksheet）
-  let sheetName=Object.keys(entries).find(k=>/^xl\/worksheets\/.*\.xml$/.test(k));
-  const sheet=await read(sheetName); if(!sheet)throw new Error("シートが読めません");
-  const rows=[]; const rowRe=/<row[^>]*>([\s\S]*?)<\/row>/g; let rm;
-  while((rm=rowRe.exec(sheet))){
-    const arr=[]; const cRe=/<c\s+r="([A-Z]+\d+)"([^>]*)>([\s\S]*?)<\/c>/g; let cm;
-    while((cm=cRe.exec(rm[1]))){
-      const ci=colToIndex(cm[1]), attr=cm[2], body=cm[3]; let val="";
-      if(/t="s"/.test(attr)){const v=body.match(/<v>([\s\S]*?)<\/v>/);val=v?shared[+v[1]]||"":"";}
-      else if(/t="inlineStr"/.test(attr)){const t=body.match(/<t[^>]*>([\s\S]*?)<\/t>/);val=t?xmlUnesc(t[1]):"";}
-      else{const v=body.match(/<v>([\s\S]*?)<\/v>/);val=v?xmlUnesc(v[1]):"";}
-      arr[ci]=val;
-    }
-    // 空セルも含めて長さを揃える
-    for(let i=0;i<arr.length;i++)if(arr[i]===undefined)arr[i]="";
-    rows.push(arr);
-  }
-  return rows;
-}
-// ---- CSV 解析（UTF-8 / Shift_JIS 自動判定）----
-function decodeText(ab){
-  const u8=new Uint8Array(ab);
-  if(u8[0]===0xEF&&u8[1]===0xBB&&u8[2]===0xBF)return new TextDecoder("utf-8").decode(u8.subarray(3));
-  const utf=new TextDecoder("utf-8",{fatal:false}).decode(u8);
-  if(utf.includes("�")){try{return new TextDecoder("shift_jis").decode(u8);}catch(e){}}
-  return utf;
-}
-function parseCSV(text){
-  const rows=[]; let row=[],cur="",q=false;
-  for(let i=0;i<text.length;i++){const c=text[i];
-    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
-    else{ if(c==='"')q=true; else if(c===','){row.push(cur);cur="";} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur="";} else if(c!=='\r')cur+=c; }
-  }
-  if(cur!==""||row.length){row.push(cur);rows.push(row);}
-  return rows.filter(r=>r.some(x=>(x||"").trim()!==""));
-}
-// ---- 行→絵本オブジェクト ----
-function rowsToBooks(rows){
-  if(!rows.length)return {books:[],skipped:0};
-  const header=rows[0].map(h=>(h||"").trim());
-  const map={}; header.forEach((h,i)=>{const c=IMPORT_COLS.find(c=>c.match(h));if(c&&map[c.key]===undefined)map[c.key]=i;});
-  if(map.title===undefined)throw new Error("「タイトル」列が見つかりません");
-  const genres=Object.keys(GENRES), cl=(v,mx,dv)=>{const n=parseInt(v,10);return isNaN(n)?dv:Math.max(0,Math.min(mx,n));};
-  const books=[]; let skipped=0;
-  for(let r=1;r<rows.length;r++){
-    const g=rows[r], get=k=>map[k]!==undefined?(g[map[k]]||"").trim():"";
-    const title=get("title"); if(!title){skipped++;continue;}
-    let genre=get("genre"); if(!genres.includes(genre))genre="そのほか";
-    const favRaw=get("fav");
-    books.push({id:"BK"+(Date.now()%100000+r),title,author:get("author")||"（作者不明）",
-      genre,isbn:get("isbn").replace(/[^0-9Xx]/g,""),cover:"",
-      f:{react:cl(get("react"),MAXREACT,3)},
-      fav:/^(○|◯|✓|1|true|はい|yes)$/i.test(favRaw),d:get("d")||today()});
-  }
-  return {books,skipped};
-}
-async function handleImportFile(file){
-  try{
-    const ab=await file.arrayBuffer();
-    let rows;
-    if(/\.xlsx$/i.test(file.name)) rows=await readXlsx(ab);
-    else rows=parseCSV(decodeText(ab));
-    const {books,skipped}=rowsToBooks(rows);
-    if(!books.length){toast("取り込める行がありませんでした");return;}
-    showImportConfirm(books,skipped);
-  }catch(e){toast("読み込み失敗: "+e.message);}
-}
+// バックアップ復元時に読み込んだ絵本の確認ダイアログ
 function showImportConfirm(books,skipped){
   window.__pendingImport=books;
   document.getElementById("modalBox").innerHTML=
@@ -1021,7 +914,7 @@ function showImportConfirm(books,skipped){
        <button class="btn ghost" onclick="closeModal()">キャンセル</button>
        <button class="btn danger" onclick="doImport(true)">全置き換え</button>
        <button class="btn primary" onclick="doImport(false)">追加する（${books.length}冊）</button></div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
 }
 function doImport(replace){
   const books=window.__pendingImport||[];
@@ -1033,37 +926,14 @@ function doImport(replace){
   const missing=books.filter(b=>!b.isbn&&!b.cover);
   if(missing.length)setTimeout(()=>autoFillMissing(missing),400);
 }
-document.getElementById("fileInput").addEventListener("change",e=>{
-  const f=e.target.files[0]; if(f)handleImportFile(f); e.target.value="";
-});
-// CSVセルの安全化：数式扱いされる先頭文字を無害化（CSVインジェクション対策）＋通常のCSVエスケープ
-function csvCell(v){
-  let s=(v==null?"":String(v));
-  if(/^[=+\-@\t\r]/.test(s)) s="'"+s;                              // = + - @ タブ CR で始まる値は先頭に ' を付けて数式化を防ぐ
-  return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;     // 区切り・改行・引用符を含む場合はクオート
-}
-// ---- テンプレート（CSV・UTF-8 BOM）ダウンロード ----
-function downloadTemplate(){
-  const head=["タイトル","作者","ジャンル","ISBN","お子さんの反応(0-5)","お気に入り(○)","記録日(MM/DD)"];
-  const ex=[["はらぺこあおむし","エリック・カール","たべもの","9784033280103","5","○","07/15"],
-            ["（ここに自分の絵本を入力）","","そのほか","","3","","07/20"]];
-  const csv=[head,...ex].map(r=>r.map(csvCell).join(",")).join("\r\n");
-  const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="えほんログ_インポートテンプレート.csv";a.click();
-  toast("CSVテンプレートをダウンロードしました");
-}
 
 /* ===== ISBN・表紙の自動補完（タイトル→Google Books→ISBN/書影） ===== */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function gbFetch(url,tries){
-  for(let k=0;k<(tries||3);k++){
-    try{const r=await fetch(url);
-      if(r.status===429){await sleep(1500*(k+1));continue;}   // レート制限は待って再試行
-      if(r.ok)return await r.json();
-    }catch(e){}
-    await sleep(400);
-  }
-  return null;
+// タイムアウト付き fetch（既定8秒）。時間切れ／通信失敗は reject する
+function fetchT(url,ms){
+  const c=new AbortController();
+  const t=setTimeout(()=>c.abort(),ms||8000);
+  return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t));
 }
 async function fetchMeta(title){
   // NDL→Googleブックスの検索結果から最有力候補（作者・ISBN・表紙）を返す
@@ -1088,11 +958,12 @@ function pickAuthor(raw){
   return parts[0]||"";
 }
 // ① 国立国会図書館サーチ（日本の絵本に強い）。ISBNを持つ書籍のみ拾い、記事などは除外
+// 通信失敗／タイムアウトは throw（「到達できなかった」の合図）。サーバ応答があれば結果0件でも配列を返す
 async function searchNDL(query){
   const out=[];
+  const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?any="+encodeURIComponent(query)+"&cnt=100",9000);
+  if(!r.ok)return out;
   try{
-    const r=await fetch("https://ndlsearch.ndl.go.jp/api/opensearch?any="+encodeURIComponent(query)+"&cnt=100");
-    if(!r.ok)return out;
     const x=await r.text();
     const items=[...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m=>m[1]);
     const seen=new Set();
@@ -1111,10 +982,12 @@ async function searchNDL(query){
   }catch(e){}
   return out;
 }
-// ② Google Books（NDLが0件のときのフォールバック）
+// ② Google Books（英題や新しめの版に強い。NDLと合わせて取りこぼしを減らす）
 async function searchGB(query){
   const out=[];
-  const j=await gbFetch("https://www.googleapis.com/books/v1/volumes?country=JP&maxResults=12&q="+encodeURIComponent(query));
+  const r=await fetchT("https://www.googleapis.com/books/v1/volumes?country=JP&maxResults=20&q="+encodeURIComponent(query),9000);
+  if(!r.ok)return out;
+  let j; try{ j=await r.json(); }catch(e){ return out; }
   if(j&&j.items)for(const it of j.items){
     const vi=it.volumeInfo||{}; if(!vi.title)continue;
     let isbn="";
@@ -1129,10 +1002,17 @@ async function searchGB(query){
   }
   return out;
 }
+// NDLとGBを並列実行（各≤9秒）。両方到達不可なら通信エラーを投げ、そうでなければ結果をマージして返す
 async function searchTitles(query){
-  let out=await searchNDL(query);
-  if(!out.length)out=await searchGB(query);
-  // タイトルに検索語を含む本だけに絞り込み（無関係な本を除外）。0件なら全件を残す
+  const [rn,rg]=await Promise.allSettled([searchNDL(query),searchGB(query)]);
+  const ndl=rn.status==="fulfilled"?rn.value:null;
+  const gb =rg.status==="fulfilled"?rg.value:null;
+  if(ndl===null&&gb===null){ const e=new Error("通信できませんでした"); e.network=true; throw e; }
+  // NDL優先でマージ（ISBN＋タイトルで重複除外）
+  const out=[], seen=new Set();
+  for(const b of [...(ndl||[]),...(gb||[])]){
+    const k=(b.isbn||"")+"|"+(b.title||""); if(seen.has(k))continue; seen.add(k); out.push(b);
+  }
   const q=query.trim();
   // タイトル または 作者に検索語を含む本だけに絞り込み。0件なら全件を残す
   const hit=b=>(b.title||"").includes(q)||(b.author||"").includes(q);
@@ -1203,7 +1083,7 @@ function openISBNSearch(){
      </div>
      <div id="isbnResults" style="margin-top:14px"></div>
      <div class="mbtns"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
   const s=document.getElementById("isbnQ");
   s.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();runISBNSearch();}};
   s.focus();
@@ -1214,7 +1094,8 @@ async function runISBNSearch(){
   if(isbn.length!==10&&isbn.length!==13){box.innerHTML='<div class="cprevempty">ISBNは10桁または13桁の数字です。もう一度ご確認ください。</div>';return;}
   box.innerHTML=searchingHTML("えほんを さがしています…");
   let meta=null;try{meta=await lookupByISBN(isbn);}catch(e){}
-  if(!meta||!meta.title){box.innerHTML='<div class="cprevempty">この ISBN の絵本が見つかりませんでした。番号をご確認いただくか、「タイトル・作者から探す」「手入力」をお試しください。</div>';return;}
+  if(!meta||meta.reached===false){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
+  if(!meta.found){box.innerHTML='<div class="cprevempty">この ISBN の絵本が見つかりませんでした。番号をご確認いただくか、「タイトル・作者から探す」「手入力」をお試しください。</div>';return;}
   window.__isbnResult=meta;
   box.innerHTML=`<div class="sresult">
       ${meta.cover?`<img src="${esc(meta.cover)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}
@@ -1240,7 +1121,7 @@ function openSearchAdd(q){
      </div>
      <div id="sResults" style="margin-top:14px"></div>
      <div class="mbtns"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
   const s=document.getElementById("sQ");
   s.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();runTitleSearch();}};
   if(q)runTitleSearch(); else s.focus();   // クエリがあれば即検索
@@ -1250,9 +1131,10 @@ async function runTitleSearch(){
   if(!q){toast("タイトルを入力してください");return;}
   const box=document.getElementById("sResults");
   box.innerHTML=searchingHTML("えほんを さがしています…");
-  let results=[];
-  try{results=await searchTitles(q);}catch(e){}
+  let results=[], netErr=false;
+  try{results=await searchTitles(q);}catch(e){ netErr=!!(e&&e.network); }
   window.__searchResults=results;
+  if(netErr){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
   if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした。言葉を変えるか「手入力で記録」をお試しください。</div>';return;}
   box.innerHTML=results.map((b,i)=>
     `<div class="sresult">
@@ -1329,61 +1211,75 @@ async function autoFillMissing(list){
 }
 
 /* ===== ISBNから情報を取得して記録フォームへ ===== */
+// 返り値：{title,author,isbn,cover, found, reached}。reached=サーバに到達できたか（通信可否の判定に使用）
 async function lookupByISBN(isbn){
   isbn=(isbn||"").replace(/[^0-9Xx]/g,"");
-  if(isbn.length!==10&&isbn.length!==13)return null;
-  // ① Google Books（ISBN完全一致でその版を特定できる）
-  try{
-    const j=await gbFetch("https://www.googleapis.com/books/v1/volumes?country=JP&q=isbn:"+isbn);
+  if(isbn.length!==10&&isbn.length!==13)return {title:"",author:"",isbn,cover:"",found:false,reached:true};
+  // GBとNDLを並列で照会（各≤6秒）。どちらか速い方の結果を使い、応答遅れによる取りこぼしを防ぐ
+  const gbP=(async()=>{
+    const r=await fetchT("https://www.googleapis.com/books/v1/volumes?country=JP&q=isbn:"+isbn,6000);
+    if(!r.ok)return null;
+    const j=await r.json();
     if(j&&j.items&&j.items[0]){
       const vi=j.items[0].volumeInfo||{};
       const cover=(vi.imageLinks?((vi.imageLinks.thumbnail||vi.imageLinks.smallThumbnail||"").replace(/^http:/,"https:")):"")||amznCover(isbn)||"";
       if(vi.title)return {title:vi.title,author:(vi.authors&&vi.authors.join("、"))||"",isbn,cover};
     }
-  }catch(e){}
-  // ② 国立国会図書館サーチ（ISBN検索）。点字・英語版など特殊な版を避けて標準的な1件を選ぶ
-  try{
-    const r=await fetch("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn);
-    if(r.ok){
-      const x=await r.text();
-      const items=[...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m=>m[1]);
-      const special=/点字|点訳|英語|大型|ビッグ|紙芝居|[［【\[]/;
-      const pick=items.find(it=>{
-        const t=(it.match(/<title>([\s\S]*?)<\/title>/)||[])[1]||"";
-        return t&&!special.test(t);
-      })||items[0];
-      if(pick){
-        const title=xmlUnesc((pick.match(/<title>([\s\S]*?)<\/title>/)||[])[1]||"").trim();
-        const author=pickAuthor((pick.match(/<author>([\s\S]*?)<\/author>/)||[])[1]||"");
-        if(title)return {title,author,isbn,cover:amznCover(isbn)||""};
-      }
+    return null;
+  })();
+  const ndlP=(async()=>{
+    const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn,6000);
+    if(!r.ok)return null;
+    const x=await r.text();
+    const items=[...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m=>m[1]);
+    const special=/点字|点訳|英語|大型|ビッグ|紙芝居|[［【\[]/;
+    const pick=items.find(it=>{const t=(it.match(/<title>([\s\S]*?)<\/title>/)||[])[1]||"";return t&&!special.test(t);})||items[0];
+    if(pick){
+      const title=xmlUnesc((pick.match(/<title>([\s\S]*?)<\/title>/)||[])[1]||"").trim();
+      const author=pickAuthor((pick.match(/<author>([\s\S]*?)<\/author>/)||[])[1]||"");
+      if(title)return {title,author,isbn,cover:amznCover(isbn)||""};
     }
-  }catch(e){}
-  // ③ 最低限、ISBNから表紙だけでも
-  return {title:"",author:"",isbn,cover:amznCover(isbn)||""};
+    return null;
+  })();
+  const [rg,rn]=await Promise.allSettled([gbP,ndlP]);
+  const reached = rg.status==="fulfilled" || rn.status==="fulfilled";   // サーバに到達できたか
+  const hit = (rg.status==="fulfilled"&&rg.value) || (rn.status==="fulfilled"&&rn.value) || null;  // GB優先
+  if(hit)return {title:hit.title,author:hit.author,isbn,cover:hit.cover,found:true,reached:true};
+  // 見つからず（当て推量の表紙は付けない：中身なしで表紙だけ出る誤解を防ぐ）
+  return {title:"",author:"",isbn,cover:"",found:false,reached};
 }
 async function registerByISBN(isbn){
   isbn=(isbn||"").replace(/[^0-9Xx]/g,"");
-  // ① まず登録フォームをすぐ開く（待たずにメモなどを編集できる）
+  // ① まず登録フォームをすぐ開く（メモ等は待たずに編集できる）
   openAdd();
   const fi=document.getElementById("fIsbn"); if(fi)fi.value=isbn;
+  // 読み取り中：タイトル・作者は「読み取り中…」表示にして編集不可に
+  const setReading=on=>["fTitle","fAuthor"].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    if(on){ if(el.dataset.ph==null)el.dataset.ph=el.placeholder||""; el.value=""; el.placeholder="読み取り中…"; el.disabled=true; el.classList.add("reading"); }
+    else{ el.disabled=false; el.classList.remove("reading"); if(el.dataset.ph!=null){el.placeholder=el.dataset.ph; delete el.dataset.ph;} }
+  });
+  setReading(true);
   const prev=document.getElementById("coverPrev");
-  if(prev)prev.innerHTML='<div class="cprevempty">📚 タイトル・作者・表紙を取得しています…</div>';
-  toast("ISBNから情報を取得しています… 🔎");
-  // ② 裏で照合し、取得できたら空欄だけ埋める（ユーザーの入力は上書きしない）
+  if(prev)prev.innerHTML='<div class="cprevempty">📚 読み取り中…</div>';
+  // ② ISBN照合（タイムアウトで最長でも約10秒）
   let meta=null; try{ meta=await lookupByISBN(isbn); }catch(e){}
   // フォームが閉じられていたら（保存/キャンセル済み）何もしない
   const overlay=document.getElementById("overlay"), ti=document.getElementById("fTitle");
   if(!ti||!overlay.classList.contains("show")){return;}
+  setReading(false);
   const fill=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v;};
-  if(meta){
+  if(meta&&meta.found){
     fill("fTitle",meta.title); fill("fAuthor",meta.author); fill("fCover",meta.cover);
     const fc=document.getElementById("fCover");
     if(prev)prev.innerHTML=coverBoxHtml((fc&&fc.value)||"");
-    toast(meta.title?"情報を反映しました。内容を確かめて記録してください 📖":"タイトルは手入力してください");
+    toast("情報を反映しました。内容を確かめて記録してください 📖");
+  }else if(meta&&meta.reached===false){
+    if(prev)prev.innerHTML=coverBoxHtml("");
+    toast("📶 通信できませんでした。もう一度お試しいただくか、手入力してください");
   }else{
     if(prev)prev.innerHTML=coverBoxHtml("");
-    toast("情報を取得できませんでした。手入力で調整してください");
+    toast("このISBNの情報が見つかりませんでした。手入力で調整してください");
   }
 }
 
@@ -1401,7 +1297,7 @@ function openScanner(mode){
     <p class="sub">絵本の裏表紙にあるバーコード（978から始まるISBN）をカメラに写してください。自動で読み取ります。</p>
     <div id="scanArea"></div>
     <div class="mbtns"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`;
-  document.getElementById("overlay").classList.add("show");
+  showOverlay();
   startBarcode();
 }
 async function startBarcode(){
@@ -1421,7 +1317,7 @@ async function startBarcode(){
       try{
         const codes=await scanDet.detect(v);
         const hit=codes.map(c=>c.rawValue).find(s=>/^97[89]\d{10}$/.test(s));
-        if(hit){scannerStop();closeModal();registerByISBN(hit);return;}
+        if(hit){scannerStop();registerByISBN(hit);return;}
       }catch(e){}
       scanRAF=requestAnimationFrame(tick);
     };
@@ -1475,7 +1371,7 @@ async function decodeBarcodeImage(file){
       const d=(""+(text||"")).replace(/[^0-9]/g,"");
       if(isValid(d))hit=d; else if(d.length>=13&&/^97[89]/.test(d))hit=d.slice(0,13);
     }
-    if(hit&&isValid(hit)){setStat("読み取れました："+hit);scannerStop();closeModal();registerByISBN(hit);}
+    if(hit&&isValid(hit)){setStat("読み取れました："+hit);scannerStop();registerByISBN(hit);}
     else setStat("バーコードを読み取れませんでした。数字（978…）が大きくはっきり写るように撮り直すか、手入力をお使いください。");
   }catch(e){ setStat("読み取りに失敗しました（"+esc(e.message||e)+"）"); }
 }
