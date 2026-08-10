@@ -1110,10 +1110,10 @@ function openBookSearch(q,mode){
   const isA=window.__searchMode==="author";
   const box=document.getElementById("modalBox");box.onkeydown=null;
   box.innerHTML=
-    `<h3>${isA?"作者で探して記録":"タイトルで探して記録"}</h3><p class="sub">${isA?"作者名を入れると、その作者の作品を一覧します。候補から選ぶと、タイトル・作者・表紙が自動で入ります。":"タイトルを入れて探せます。候補から選ぶと、タイトル・作者・表紙が自動で入ります。"}別の言葉で探すときは「再検索」を押してください。</p>
+    `<h3>${isA?"作者で探して記録":"タイトルで探して記録"}</h3><p class="sub">${isA?"作者名を入れると、その作者の作品を一覧します。候補から選ぶと、タイトル・作者・表紙が自動で入ります。著者名は表記ゆれ（「エリック・カール」「カール，エリック」、スペースの有無、英語表記など）でヒットが変わることがあります。うまく出ないときは表記を変えて再検索してみてください。":"タイトルを入れて探せます。候補から選ぶと、タイトル・作者・表紙が自動で入ります。タイトルも表記ゆれ（かな・漢字、スペースの有無、英語表記など）でヒットが変わることがあります。うまく出ないときは表記を変えて再検索してみてください。"}検索結果の上位30件が表示されます。</p>
      <div class="findrow">
        <div class="field" style="flex:1;margin:0"><input id="sQ" placeholder="${isA?'例：エリック・カール／かこさとし':'例：はらぺこあおむし'}" autocomplete="off" value="${q?esc(q):''}"></div>
-       <button class="btn primary" onclick="runTitleSearch()">🔎 再検索</button>
+       <button id="sBtn" class="btn primary" onclick="runTitleSearch()">🔎 検索</button>
      </div>
      <div id="sResults" style="margin-top:14px"></div>
      <div class="mbtns"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`;
@@ -1127,6 +1127,7 @@ async function runTitleSearch(){
   const q=document.getElementById("sQ").value.trim();
   if(!q){toast(mode==="author"?"作者名を入力してください":"タイトルを入力してください");return;}
   const box=document.getElementById("sResults");
+  const btn=document.getElementById("sBtn"); if(btn)btn.innerHTML="🔎 再検索";   // 一度検索したら「再検索」に切り替え
   box.innerHTML=searchingHTML("えほんを さがしています…");
   let results=[], netErr=false;
   try{results=await searchTitles(q,mode);}catch(e){ netErr=!!(e&&e.network); }
