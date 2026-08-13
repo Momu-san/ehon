@@ -47,19 +47,21 @@ button{font-family:inherit;cursor:pointer}
 .tutbtn:hover{background:var(--accent-soft)}
 .tutbtn .tutimg{width:46px;height:46px;object-fit:contain;display:block}
 /* ===== 実画面スポットライト・ツアー ===== */
-.tour-block{position:fixed;inset:0;z-index:399;background:transparent}                 /* アプリ操作をブロック */
+.tour-block{position:fixed;inset:0;z-index:399;background:transparent;opacity:0;transition:opacity .4s ease}   /* アプリ操作をブロック */
 .tour-hole{position:fixed;left:0;top:0;width:0;height:0;border-radius:16px;z-index:400;pointer-events:none;
-  box-shadow:0 0 0 9999px rgba(40,32,20,.62);transition:left .28s,top .28s,width .28s,height .28s}
-.tour-tip{position:fixed;z-index:401;max-width:320px;width:calc(100vw - 32px);background:var(--panel);
-  border-radius:16px;padding:16px 18px;box-shadow:0 18px 44px rgba(0,0,0,.30);animation:pop .2s}
-.tour-tip h4{font-size:15px;font-weight:800;margin:0 0 7px;color:var(--accent-deep)}
-.tour-tip p{font-size:13px;line-height:1.65;margin:0;color:var(--ink)}
+  box-shadow:0 0 0 9999px rgba(40,32,20,.62);opacity:0;
+  transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease,opacity .45s ease}
+.tour-tip{position:fixed;z-index:401;max-width:360px;width:calc(100vw - 28px);background:var(--panel);
+  border-radius:18px;padding:20px 22px;box-shadow:0 18px 44px rgba(0,0,0,.30);opacity:0;transition:opacity .4s ease}
+.tour-in{opacity:1}                                     /* フェードイン/アウト用 */
+.tour-tip h4{font-size:18px;font-weight:800;margin:0 0 10px;color:var(--accent-deep)}
+.tour-tip p{font-size:15px;line-height:1.8;margin:0;color:var(--ink)}
 .tour-tip p b{color:var(--accent-deep)}
-.tour-foot{display:flex;align-items:center;justify-content:space-between;margin-top:15px;gap:10px}
-.tour-step{font-size:12px;color:var(--muted);font-weight:800;white-space:nowrap}
-.tour-btns{display:flex;gap:8px}
-.tour-btns .btn{padding:8px 15px;font-size:13px;box-shadow:none}
-.tour-skip{background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;padding:4px}
+.tour-foot{display:flex;align-items:center;justify-content:space-between;margin-top:18px;gap:10px}
+.tour-step{font-size:13px;color:var(--muted);font-weight:800;white-space:nowrap}
+.tour-btns{display:flex;gap:9px}
+.tour-btns .btn{padding:11px 21px;font-size:15px;box-shadow:none}
+.tour-skip{background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline;padding:6px}
 .addbtn{width:40px;height:40px;background:none;border:none;padding:0;cursor:pointer;border-radius:12px;
   color:var(--accent);font-size:36px;font-weight:800;line-height:1;display:grid;place-items:center;
   box-shadow:none;transition:.15s}
@@ -1553,14 +1555,14 @@ function tourPlusRect(){
   return {left,top,width:right-left,height:bottom-top};
 }
 const TOUR_STEPS=[
-  {sel:null, title:"えほんログへようこそ！📖", body:"実際の画面に沿って使い方をご案内します。「次へ」で進みます（「スキップ」でいつでも終了できます）。"},
+  {sel:null, title:"えほんログへようこそ！", body:"実際の画面に沿って使い方をご案内します。<br>「次へ」で進みます（「スキップ」でいつでも終了できます）。"},
   {sel:"#tutBtn", title:"使い方はここから", body:"この案内は、<b>画面左上のこのアイコン</b>からいつでも見返せます。"},
   {enter:()=>tourNav("books"), sel:'#navi button[data-t="books"]', title:"本の記録", body:"読んだ絵本を記録するページです。"},
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
   {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンルの傾向などが見られます。"},
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
-  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録（右上の ＋）", body:"右上の ＋ から登録します。おすすめ順は <b>①バーコード</b>（一番かんたん・正確）→ <b>②ISBN</b> → <b>③タイトル検索</b> → ④手入力 です。"},
-  {modal:true, enter:()=>{try{closeAddMenu();}catch(e){} openSearchAdd("");}, title:"検索のコツ（ISBN/タイトル検索）", body:"この検索画面で探せます。絵本以外の本もヒットするので、タイトルは<b>正確に、最後まで全部</b>入力を。見つからない・<b>結果が少なすぎる</b>ときは通信状況の影響のことがあるので「🔎 再検索」を<b>5回ほど</b>お試しください。"},
+  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録（右上の ＋）", body:"右上の ＋ から登録します。おすすめ順は次のとおりです：<br><br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
+  {modal:true, enter:()=>{try{closeAddMenu();}catch(e){} openSearchAdd("");}, title:"検索のコツ（ISBN/タイトル検索）", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、最後まで全部</b>入力してください。<br><br>見つからない・<b>結果が少なすぎる</b>ときは、通信状況の影響のことがあります。<br>「🔎 再検索」を<b>5回ほど</b>お試しください。"},
   {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"さっそく絵本を登録してみましょう📖 この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
 ];
 let __tourI=-1, __tourEls=null;
@@ -1572,6 +1574,9 @@ function startTour(){
   const tip=document.createElement("div"); tip.className="tour-tip";
   document.body.appendChild(block); document.body.appendChild(hole); document.body.appendChild(tip);
   __tourEls={block,hole,tip};
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{        // ぽわーんとフェードイン
+    if(!__tourEls)return; block.classList.add("tour-in"); hole.classList.add("tour-in"); tip.classList.add("tour-in");
+  }));
   window.addEventListener("resize",tourReposition);
   window.addEventListener("scroll",tourReposition,true);
   __tourI=0; tourRender();
@@ -1599,11 +1604,15 @@ function tourPlace(st){
   const hole=__tourEls.hole, tip=__tourEls.tip;
   const vw=innerWidth, vh=innerHeight, pad=8, m=12;
   tip.style.transform=""; hole.style.display="";
-  // モーダルを開くステップ：ツアーの暗幕は消して（モーダル自身の背景で集中）、吹き出しは下部中央
+  // モーダルを開くステップ：ツアーの暗幕は消して、吹き出しは検索バーの少し上へ（説明文の上に重ね、検索バーは背面に見える）
   if(st.modal){
     hole.style.display="none";
     const th=tip.getBoundingClientRect().height;
-    tip.style.left="50%"; tip.style.transform="translateX(-50%)"; tip.style.top=Math.max(m,vh-th-14)+"px";
+    const sQ=document.getElementById("sQ");
+    let top;
+    if(sQ){ top=sQ.getBoundingClientRect().top-14-th; } else { top=vh-th-14; }
+    if(top<m) top=m;
+    tip.style.left="50%"; tip.style.transform="translateX(-50%)"; tip.style.top=top+"px";
     return;
   }
   let r=null;
@@ -1624,11 +1633,17 @@ function tourPlace(st){
 function tourReposition(){ if(__tourI>=0&&__tourEls){ const st=TOUR_STEPS[__tourI]; if(st)tourPlace(st); } }
 function endTour(silent){
   tourCloseModalIfOpen();
-  if(__tourEls){ __tourEls.block.remove(); __tourEls.hole.remove(); __tourEls.tip.remove(); __tourEls=null; }
-  __tourI=-1;
+  const els=__tourEls; __tourEls=null; __tourI=-1;
   window.removeEventListener("resize",tourReposition);
   window.removeEventListener("scroll",tourReposition,true);
   try{closeAddMenu();}catch(e){}
+  if(els){
+    if(silent){ els.block.remove(); els.hole.remove(); els.tip.remove(); }
+    else {                                                      // ぽわーんとフェードアウトしてから撤去
+      els.block.classList.remove("tour-in"); els.hole.classList.remove("tour-in"); els.tip.classList.remove("tour-in");
+      setTimeout(()=>{ els.block.remove(); els.hole.remove(); els.tip.remove(); }, 420);
+    }
+  }
 }
 
 fillChars();                                            // 各所に妖精を配置
