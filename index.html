@@ -1574,9 +1574,9 @@ function startTour(){
   const tip=document.createElement("div"); tip.className="tour-tip";
   document.body.appendChild(block); document.body.appendChild(hole); document.body.appendChild(tip);
   __tourEls={block,hole,tip};
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{        // ぽわーんとフェードイン
+  setTimeout(()=>{                                             // ぽわーんとフェードイン（rAFだと非表示時に止まるためタイマーで）
     if(!__tourEls)return; block.classList.add("tour-in"); hole.classList.add("tour-in"); tip.classList.add("tour-in");
-  }));
+  }, 30);
   window.addEventListener("resize",tourReposition);
   window.addEventListener("scroll",tourReposition,true);
   __tourI=0; tourRender();
