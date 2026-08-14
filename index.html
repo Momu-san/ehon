@@ -509,27 +509,12 @@ function fillChars(){
 }
 const PAGECHAR={books:"squirrel_pencil",wish:"squirrel_read",dash:"dashboard",batch:"album"};
 
-function mk(title,author,genre,react,fav,d){
-  return {id:"BK"+(title.length*7+react+d.length),title,author,genre,
-    f:{react},fav,d,isbn:ISBN_MAP[title]||"",cover:""};}
-function seed(){return [
-  mk("はらぺこあおむし","エリック・カール","たべもの",5,true,"07/15"),
-  mk("ぐりとぐら","なかがわ りえこ","たべもの",5,true,"07/12"),
-  mk("いないいないばあ","松谷 みよ子","どうぶつ",5,true,"07/10"),
-  mk("しろくまちゃんのほっとけーき","わかやま けん","たべもの",4,false,"07/08"),
-  mk("だるまさんが","かがくい ひろし","せいかつ",5,true,"07/18"),
-  mk("バムとケロのにちようび","島田 ゆか","ファンタジー",4,false,"07/17"),
-  mk("のりものいっぱい","たけがみ たえ","のりもの",3,false,"07/19"),
-  mk("きんぎょがにげた","五味 太郎","どうぶつ",5,false,"07/05"),
-  mk("１００かいだてのいえ","いわい としお","ファンタジー",4,false,"07/20"),
-  mk("ノンタン ぶらんこのせて","キヨノ サチコ","どうぶつ",2,false,"07/21"),
-];}
 function load(){
   const raw=localStorage.getItem(STORE);
-  if(!raw){const s={__v:SCHEMA_V,books:seed()};save(s);return s;}
+  if(!raw){const s={__v:SCHEMA_V,books:[]};save(s);return s;}   // 初回起動は本棚を空にする
   let s=JSON.parse(raw);
   if((s.__v||0)<SCHEMA_V){
-    s.__v=SCHEMA_V;s.books=s.books||seed();
+    s.__v=SCHEMA_V;s.books=s.books||[];
     s.books.forEach(b=>{
       if(!b.isbn)b.isbn=ISBN_MAP[b.title]||"";        // 既知タイトルにISBNを付与
       if(b.cover&&/google/.test(b.cover))b.cover="";    // 旧Google URLは破棄しISBN方式へ
@@ -1548,7 +1533,9 @@ window.addEventListener("error",e=>{try{toast("エラー: "+(e.message||e));}cat
 /* ===== 実画面スポットライト・ツアー（はじめての使い方） ===== */
 const TUTORIAL_KEY="ehonlog_tutorial_seen_v1";
 function tourNav(t){const b=document.querySelector('#navi button[data-t="'+t+'"]'); if(b)b.click();}
-function tourOpenMenu(){ tourNav("books"); try{buildAddMenu();}catch(e){} const m=document.getElementById("addMenu"); if(m){m.classList.add("show"); try{positionAddMenu();}catch(e){}} }
+function tourOpenMenu(){ tourNav("books");
+  // メニューはクリック処理が終わってから開く（「次へ」タップが document に伝播して即閉じるのを防ぐ）
+  setTimeout(()=>{ try{buildAddMenu();}catch(e){} const m=document.getElementById("addMenu"); if(m){m.classList.add("show"); try{positionAddMenu();}catch(e){}} }, 40); }
 // ＋ボタンと開いたメニューを合わせた範囲（右上の＋を必ず含める）
 function tourPlusRect(){
   const b=document.getElementById("addBtn"), m=document.getElementById("addMenu");
@@ -1567,7 +1554,7 @@ const TOUR_STEPS=[
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
   {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンル別の冊数などが見られます。"},
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
-  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録（右上の ＋）", body:"右上の ＋ から登録します。おすすめ順は次のとおりです：<br><br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
+  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。おすすめ順は次のとおりです：<br><br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"ISBN検索のコツ", body:"ISBNは、絵本の<b>裏表紙や最後のページ</b>に書いてあることが多い番号です。<br><br>この番号で絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>見つからないときは通信状況の影響のことがあるので「🔎 再検索」を<b>5回ほど</b>お試しください。"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、最後まで全部</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などの<b>表記ゆれ</b>でもヒットが変わります。うまく出ないときは表記を変えて試すのも有効です。<br><br>見つからない・<b>結果が少なすぎる</b>ときは、通信状況の影響のことがあります。<br>「🔎 再検索」を<b>5回ほど</b>お試しください。"},
   {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"さっそく絵本を登録してみましょう📖 この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
@@ -1599,7 +1586,7 @@ function tourRender(){
       '<div class="tour-foot"><span class="tour-step">'+(__tourI+1)+' / '+TOUR_STEPS.length+'</span>'+
       '<div class="tour-btns">'+(isFirst?'':'<button class="btn ghost" onclick="tourPrev()">戻る</button>')+
       '<button class="btn primary" onclick="tourNext()">'+(isLast?'はじめる':'次へ')+'</button></div></div>'+
-      (isLast?'':'<div style="text-align:right;margin-top:6px"><button class="tour-skip" onclick="endTour()">スキップ</button></div>');
+      (isLast?'':'<div style="text-align:right;margin-top:6px"><button class="tour-skip" onclick="endTour()">閉じる</button></div>');
     tourPlace(st);
   }, (st.enter?300:0));
 }
