@@ -908,10 +908,29 @@ function openModal(title,body,okLabel,okCls,onOk,cancelLabel){
 }
 let __closingByCode=false;
 // モーダル表示：戻る操作（スワイプ/バックボタン）で閉じられるよう履歴を1つ積む
+// スマホのキーパッド表示時：見えている範囲にモーダルを収めて、保存ボタンまでスクロールできるようにする
+function fitModalToViewport(){
+  const vv=window.visualViewport; if(!vv)return;
+  const ov=document.getElementById("overlay"), box=document.getElementById("modalBox");
+  if(!ov)return;
+  if(ov.classList.contains("show")){
+    ov.style.top=vv.offsetTop+"px"; ov.style.height=vv.height+"px"; ov.style.bottom="auto";  // 表示領域＝キーパッドの上だけ
+    if(box)box.style.maxHeight=(vv.height-16)+"px";
+  }else{
+    ov.style.top=""; ov.style.height=""; ov.style.bottom="";
+    if(box)box.style.maxHeight="";
+  }
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",fitModalToViewport);
+  window.visualViewport.addEventListener("scroll",fitModalToViewport);
+}
 function showOverlay(){
   const ov=document.getElementById("overlay");
   const wasShown=ov.classList.contains("show");
   ov.classList.add("show");
+  const box=document.getElementById("modalBox"); if(box)box.scrollTop=0;   // 常に一番上（表紙）から表示
+  fitModalToViewport();
   if(!wasShown){ try{ history.pushState({ehonModal:1},""); }catch(e){} }
 }
 function closeModal(){
@@ -919,6 +938,7 @@ function closeModal(){
   const ov=document.getElementById("overlay");
   const wasShown=ov.classList.contains("show");
   ov.classList.remove("show");
+  fitModalToViewport();                                   // インラインで付けたサイズを解除
   // ボタン等で閉じたら、積んだ履歴も戻して同期（popstateは下のガードで無害化）
   if(wasShown && history.state && history.state.ehonModal){ __closingByCode=true; try{history.back();}catch(e){__closingByCode=false;} }
 }
@@ -926,7 +946,7 @@ function closeModal(){
 window.addEventListener("popstate",function(){
   if(__closingByCode){ __closingByCode=false; return; }
   const ov=document.getElementById("overlay");
-  if(ov&&ov.classList.contains("show")){ scannerStop(); ov.classList.remove("show"); }
+  if(ov&&ov.classList.contains("show")){ scannerStop(); ov.classList.remove("show"); fitModalToViewport(); }
 });
 document.getElementById("overlay").onclick=e=>{if(e.target.id==="overlay")closeModal();};
 
@@ -955,29 +975,14 @@ function doImport(replace){
   save(DB);closeModal();toast((replace?"置き換え":"追加")+"しました（"+books.length+"冊）📚");
   renderAll();
   window.__pendingImport=null;
-  // ISBN空欄の絵本は、タイトルから自動でISBN・表紙を補完
-  const missing=books.filter(b=>!b.isbn&&!b.cover);
-  if(missing.length)setTimeout(()=>autoFillMissing(missing),400);
+  // ※ISBN空の本にタイトルからISBNを逆引きすると誤って別の本のISBN/表紙が付くため、復元時の自動補完は行わない
 }
 
-/* ===== ISBN・表紙の自動補完（タイトル→Google Books→ISBN/書影） ===== */
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // タイムアウト付き fetch（既定8秒）。時間切れ／通信失敗は reject する
 function fetchT(url,ms){
   const c=new AbortController();
   const t=setTimeout(()=>c.abort(),ms||8000);
   return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t));
-}
-async function fetchMeta(title){
-  // NDL→Googleブックスの検索結果から最有力候補（作者・ISBN・表紙）を返す
-  try{
-    const res=await searchTitles(title);
-    if(res&&res.length){
-      const b=res[0];
-      if(b.isbn||b.cover||b.author)return {isbn:b.isbn||"",cover:b.cover||"",author:b.author||""};
-    }
-  }catch(e){}
-  return null;
 }
 
 /* ===== タイトルで探して記録（検索→候補から選んで記録） ===== */
@@ -1127,7 +1132,7 @@ document.addEventListener("click",e=>{                    // メニュー外ク�
 function openSearchAdd(q){
   const box=document.getElementById("modalBox");box.onkeydown=null;
   box.innerHTML=
-    `<h3>ISBN/タイトルで探して記録</h3><p class="sub">ISBNやタイトルを入れて探せます。タイトルはできるだけ正確に、最後まで全部入力すると見つかりやすくなります。表記ゆれ（かな・漢字、スペースの有無、英語表記など）でヒットが変わることがあります。うまく出ないときは表記を変えて再検索してみてください。検索結果の上位30件が表示されます。</p>
+    `<h3>ISBN/タイトルで探して記録</h3><p class="sub">ISBNやタイトルを入れて探せます。タイトルはできるだけ正確に、最後まで全部入力すると見つかりやすくなります。表記ゆれ（かな・漢字、スペースの有無、英語表記など）でヒットが変わることがあります。</p>
      <div class="findrow">
        <div class="field" style="flex:1;margin:0"><input id="sQ" placeholder="例：9784834000825" autocomplete="off" value="${q?esc(q):''}"></div>
        <button id="sBtn" class="btn primary" onclick="runTitleSearch()">🔎 検索</button>
@@ -1141,7 +1146,7 @@ function openSearchAdd(q){
 }
 async function runTitleSearch(){
   const q=document.getElementById("sQ").value.trim();
-  if(!q){toast("タイトルを入力してください");return;}
+  if(!q){toast("ISBNかタイトルを入力してください");return;}
   const box=document.getElementById("sResults");
   const btn=document.getElementById("sBtn"); if(btn)btn.innerHTML="🔎 再検索";   // 一度検索したら「再検索」に切り替え
   box.innerHTML=searchingHTML("えほんを さがしています…");
@@ -1149,7 +1154,7 @@ async function runTitleSearch(){
   try{results=await searchTitles(q);}catch(e){ netErr=!!(e&&e.network); }
   window.__searchResults=results;
   if(netErr){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
-  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした。検索サーバーが一時的に混み合うことがあるので、上の「🔎 再検索」を5回くらい試してみてください（何度かで見つかることがあります）。それでも出ないときは、言葉を変えたり、手入力で記録することもできます。</div>';return;}
+  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした。検索サーバーが一時的に混み合うことがあるので、上の「🔎 再検索」を5回くらい試してみてください（何度かで見つかることがあります）。</div>';return;}
   box.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">件数が少ないときは、検索サーバーの状況によって取りこぼしていることがあります。上の「🔎 再検索」を何度か試すと、さらに見つかることがあります。</div>'+results.map((b,i)=>
     `<div class="sresult" role="button" tabindex="0" onclick="pickSearchResult(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickSearchResult(${i});}">
       ${b.cover?`<img src="${esc(b.cover)}" onload="if(this.naturalWidth<=2)this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}
@@ -1236,37 +1241,6 @@ async function handleRestoreFile(file){
 document.getElementById("backupInput").addEventListener("change",e=>{
   const f=e.target.files[0]; if(f)handleRestoreFile(f); e.target.value="";
 });
-let autoRunning=false;
-const unknownAuthor=a=>!a||a==="（作者不明）";     // 作者未設定の判定
-async function autoFillMissing(list){
-  if(autoRunning){toast("自動補完はすでに実行中です");return;}
-  // ISBN・表紙・作者のいずれかが欠けている絵本が対象
-  const targets=(list||DB.books).filter(b=>!b.isbn||!b.cover||unknownAuthor(b.author));
-  if(!targets.length){toast("補完が必要な絵本はありません（すべてISBN/表紙/作者あり）");return;}
-  autoRunning=true;
-  toast("ISBN・表紙・作者を自動補完中… 0/"+targets.length);
-  let done=0,ok=0;
-  for(const b of targets){
-    try{
-      const meta=await fetchMeta(b.title);
-      if(meta){
-        let hit=false;
-        if(meta.isbn&&!b.isbn){b.isbn=meta.isbn;hit=true;}
-        if(meta.cover&&!b.cover){b.cover=meta.cover;hit=true;}   // 無ければISBNからAmazon書影を自動生成
-        if(meta.author&&unknownAuthor(b.author)){b.author=meta.author;hit=true;}
-        if(hit)ok++;
-        save(DB);renderBooks();
-      }
-    }catch(e){}
-    done++;
-    if(done%3===0||done===targets.length)toast("ISBN・表紙・作者を自動補完中… "+done+"/"+targets.length);
-    await sleep(350);
-  }
-  save(DB);renderAll();
-  autoRunning=false;
-  toast("自動補完 完了："+ok+"/"+targets.length+" 件を更新しました 🖼");
-}
-
 /* ===== ISBNから情報を取得して記録フォームへ ===== */
 // 返り値：{title,author,isbn,cover, found, reached}。reached=サーバに到達できたか（通信可否の判定に使用）
 async function lookupByISBN(isbn){
@@ -1329,7 +1303,7 @@ function isbnRetryBox(isbn){
   return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
     <div class="cprevempty">情報が取得できませんでした</div>
     <button type="button" class="btn soft" onclick="fillFromISBN('${isbn}')">🔄 もう一度さがす</button>
-    <div class="cprevempty" style="font-size:12px;max-width:270px;line-height:1.5">検索サーバーが一時的に混み合うことがあります。もう一度さがすと見つかることが多いです。</div>
+    <div class="cprevempty" style="font-size:12px;max-width:270px;line-height:1.5">通信状況や検索サーバーの混み具合で取得できないことがあります。「🔄 もう一度さがす」を<b>数回</b>くり返すと、見つかることがあります。</div>
     <button type="button" class="btn soft dcapbtn" onclick="captureCoverForm()">📷 表紙を撮影する</button></div>`;
 }
 // ISBN照合してフォームの空欄を埋める（フォームは既に開いている前提。再試行でも入力は保持）
@@ -1460,7 +1434,8 @@ function albumCSS(){return `
   body{background:#efe9dd;color:#4a463f;
     font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .album-cover,.album-page{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;
-    padding:48px;page-break-after:always;break-after:page}
+    padding:48px;page-break-inside:avoid;break-inside:avoid}
+  .album-page{page-break-before:always;break-before:page}   /* 各絵本を新しいページに（間の白紙を防ぐ） */
   .album-cover{background:#e7ded0}
   .ac-inner{text-align:center;border:2px solid #b7a88c;border-radius:6px;padding:64px 48px;background:#f6f1e7;
     box-shadow:0 10px 40px rgba(120,100,70,.18)}
@@ -1486,7 +1461,7 @@ function albumCSS(){return `
   @page{size:A4;margin:0}
 `;}
 function exportAlbumPDF(){
-  const books=DB.books;
+  const books=DB.books.filter(b=>!b.wish);   // 「本の記録」のみ（読みたい本は除外）
   if(!books.length){toast("登録された絵本がありません");return;}
   const w=window.open("","_blank");
   if(!w){toast("ポップアップがブロックされました。ブラウザで許可してください");return;}
@@ -1555,10 +1530,10 @@ const TOUR_STEPS=[
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
   {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンル別の冊数などが見られます。"},
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
-  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。おすすめ順：<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
+  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br>おすすめ順：<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"ISBN検索のコツ", body:"ISBNは、絵本の<b>裏表紙や最後のページ</b>に書いてあることが多い番号です。<br><br>この番号で絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>見つからないときは通信状況の影響のことがあるので「🔎 再検索」を<b>5回ほど</b>お試しください。"},
-  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、最後まで全部</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などの<b>表記ゆれ</b>でもヒットが変わります。うまく出ないときは表記を変えて試すのも有効です。<br><br>見つからない・<b>結果が少なすぎる</b>ときは、通信状況の影響のことがあります。<br>「🔎 再検索」を<b>5回ほど</b>お試しください。"},
-  {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"さっそく絵本を登録してみましょう📖 この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
+  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などの<b>表記ゆれ</b>でもヒットが変わります。うまく出ないときは表記を変えて試すのも有効です。<br><br>見つからない・<b>結果が少なすぎる</b>ときは、通信状況の影響のことがあります。<br>「🔎 再検索」を<b>5回ほど</b>お試しください。"},
+  {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"たくさん登録して、自分だけの本棚を楽しんでください。<br><br>絵本以外も登録できるので、お子さんが大きくなったら文庫本などの記録にも使えます。<br><br>この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
 ];
 let __tourI=-1, __tourEls=null;
 function openTutorial(){ startTour(); }                 // 初回起動＆左上アイコンの入口
