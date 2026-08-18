@@ -110,11 +110,13 @@ button{font-family:inherit;cursor:pointer}
 /* オリジナルカテゴリ管理 */
 .catlist{display:flex;flex-direction:column;gap:8px}
 .catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
-.catrow-ic{flex:none;display:inline-flex;align-items:center}
-.catrow-ic .icn{width:28px;height:28px}
+.catrow-ic{flex:none;display:inline-flex;align-items:center;background:none;border:none;padding:3px;cursor:pointer;border-radius:9px;transition:.15s}
+.catrow-ic:hover{background:var(--accent-soft)}
+.catrow-ic .icn{width:28px;height:28px;display:block}
 .catrow-ic .icn-emo{font-size:22px}
 .catrow-name{flex:1;font-weight:800;font-size:14px;min-width:0;word-break:break-all}
-.catrow-del{padding:6px 13px;font-size:12px;box-shadow:none;flex:none}
+.catrow-edit{padding:6px 11px;font-size:12px;box-shadow:none;flex:none;white-space:nowrap}
+.catrow-del{padding:6px 11px;font-size:12px;box-shadow:none;flex:none}
 .catadd{margin-top:12px}
 .caticons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .caticon{border:2px solid var(--line);background:var(--panel);border-radius:12px;padding:6px;cursor:pointer;display:grid;place-items:center;transition:.15s}
@@ -680,8 +682,9 @@ function renderCategoryPanel(){
   const box=document.getElementById("catManager"); if(!box)return;
   const cats=DB.categories||[];
   const list=cats.map((c,i)=>
-    `<div class="catrow"><span class="catrow-ic">${genreIcon(c.name,"med")}</span>
+    `<div class="catrow"><button type="button" class="catrow-ic" title="アイコンを変更" onclick="openEditCategoryIcon(${i})">${genreIcon(c.name,"med")}</button>
        <span class="catrow-name">${esc(c.name)}</span>
+       <button class="btn soft catrow-edit" onclick="openEditCategoryIcon(${i})">アイコン変更</button>
        <button class="btn ghost catrow-del" onclick="removeCategory(${i})">削除</button></div>`).join("");
   const canAdd=cats.length<MAX_CUSTOM_CATEGORIES;
   box.innerHTML=(cats.length?`<div class="catlist">${list}</div>`:`<div class="empty" style="padding:8px 0">まだありません</div>`)+
@@ -692,12 +695,10 @@ function openAddCategory(){
   if((DB.categories||[]).length>=MAX_CUSTOM_CATEGORIES){toast("カテゴリは最大"+MAX_CUSTOM_CATEGORIES+"個までです");return;}
   window.__newCatIcon=1;
   const box=document.getElementById("modalBox"); box.onkeydown=null;
-  let icons="";
-  for(let n=1;n<=10;n++){ icons+=`<button type="button" class="caticon" data-n="${n}" onclick="pickCatIcon(${n})"><img src="${CHARIMG["genre_add"+n]}" alt=""></button>`; }
   box.innerHTML=
     `<h3>オリジナルカテゴリを追加</h3>
      <div class="field"><label>カテゴリ名（10文字まで）</label><input id="catName" maxlength="10" autocomplete="off" placeholder="例：かがく／えいご など"></div>
-     <div class="field"><label>アイコンを選ぶ</label><div class="caticons" id="catIcons">${icons}</div></div>
+     <div class="field"><label>アイコンを選ぶ</label><div class="caticons" id="catIcons">${catIconGrid()}</div></div>
      <div class="mbtns"><button class="btn ghost" onclick="closeModal()">キャンセル</button><button class="btn primary" onclick="addCategory()">追加する</button></div>`;
   showOverlay();
   pickCatIcon(1);
@@ -706,6 +707,29 @@ function openAddCategory(){
 function pickCatIcon(n){
   window.__newCatIcon=n;
   document.querySelectorAll("#catIcons .caticon").forEach(el=>el.classList.toggle("on",(+el.dataset.n)===n));
+}
+function catIconGrid(){
+  let icons="";
+  for(let n=1;n<=10;n++){ icons+=`<button type="button" class="caticon" data-n="${n}" onclick="pickCatIcon(${n})"><img src="${CHARIMG["genre_add"+n]}" alt=""></button>`; }
+  return icons;
+}
+function openEditCategoryIcon(i){
+  const c=(DB.categories||[])[i]; if(!c)return;
+  window.__editCatIndex=i; window.__newCatIcon=c.icon||1;
+  const box=document.getElementById("modalBox"); box.onkeydown=null;
+  box.innerHTML=
+    `<h3>アイコンを変更</h3>
+     <p class="sub">「${esc(c.name)}」のアイコンを選び直せます。</p>
+     <div class="field"><div class="caticons" id="catIcons">${catIconGrid()}</div></div>
+     <div class="mbtns"><button class="btn ghost" onclick="closeModal()">キャンセル</button><button class="btn primary" onclick="saveCategoryIcon()">保存する</button></div>`;
+  showOverlay();
+  pickCatIcon(c.icon||1);
+}
+function saveCategoryIcon(){
+  const i=window.__editCatIndex, cats=DB.categories||[], c=cats[i]; if(!c)return;
+  c.icon=window.__newCatIcon||1;
+  registerCategories(cats);                        // GENRE_KEY[name]="add"+icon を更新
+  save(DB); closeModal(); renderAll(); toast("アイコンを変更しました 🏷");
 }
 function addCategory(){
   const cats=DB.categories||(DB.categories=[]);
@@ -1638,7 +1662,7 @@ const TOUR_STEPS=[
   {sel:"#tutBtn", title:"使い方はここから", body:"この案内は、<b>画面左上のこのアイコン</b>からいつでも見返せます。"},
   {enter:()=>tourNav("books"), sel:'#navi button[data-t="books"]', title:"本の記録", body:"読んだ絵本を記録するページです。"},
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
-  {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンル別の冊数などが見られます。"},
+  {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンル別の冊数などが見られます。<br><br>このページから<b>オリジナルのカテゴリ</b>も追加できます（最大10個・アイコンも選べます）。"},
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
   {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br>おすすめ順：<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"ISBN検索のコツ", body:"ISBNは、絵本の<b>裏表紙や最後のページ</b>に書いてあることが多い番号です。<br><br>この番号で絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>見つからないときは通信状況の影響のことがあるので「🔎 再検索」を<b>5回ほど</b>お試しください。"},
