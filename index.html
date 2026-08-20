@@ -237,6 +237,13 @@ mark{background:#fff2b8;border-radius:3px;padding:0 2px}
 .sresult .info{flex:1;min-width:0}
 .sresult .info b{display:block;font-size:14px;line-height:1.3}
 .sresult .info span{font-size:12px;color:var(--muted)}
+/* 検索結果の確認画面 */
+.confirmbook{display:flex;flex-direction:column;align-items:center;gap:14px;padding:6px 0 2px}
+.confirmcover{width:180px;max-width:62%;aspect-ratio:3/4;object-fit:contain;border-radius:8px;box-shadow:0 10px 26px rgba(60,45,20,.24);background:var(--bg)}
+.confirmcover.noimg{display:flex;align-items:center;justify-content:center;font-size:72px}
+.confirminfo{text-align:center}
+.confirminfo b{display:block;font-size:17px;line-height:1.4}
+.confirminfo span{font-size:13px;color:var(--muted)}
 .findrow{display:flex;gap:10px;align-items:center}
 .findrow .btn{flex:none;white-space:nowrap}
 /* 検索結果リストは独立してスクロール（見出し・閉じるボタンは固定） */
@@ -532,6 +539,10 @@ const GENRE_KEY={"どうぶつ":"doubutsu","せいかつ":"seikatsu","ファン�
 function genreImg(g){return CHARIMG["genre_"+(GENRE_KEY[g]||"")]||"";}
 // ジャンルのアイコン（画像があれば画像、なければ絵文字）
 function genreIcon(g,cls){const u=genreImg(g);return u?`<img class="icn ${cls||''}" src="${u}" alt="" aria-hidden="true">`:`<span class="icn-emo ${cls||''}">${EMO[g]||"📖"}</span>`;}
+// ジャンルの並び順：「そのほか」は常に最後（オリジナルを追加しても末尾固定）
+function genreOrder(){ return Object.keys(GENRES).filter(g=>g!=="そのほか").concat(GENRES["そのほか"]?["そのほか"]:[]); }
+// 集計用：{ジャンル:値} を並び順（そのほか最後）でソートして entries を返す
+function genreEntries(obj){ const ord=genreOrder(); return Object.entries(obj).sort((a,b)=>{const ia=ord.indexOf(a[0]),ib=ord.indexOf(b[0]); return (ia<0?999:ia)-(ib<0?999:ib);}); }
 // オリジナルカテゴリ（最大10・アイコンは genre_add1〜10）をコアのジャンル体系（GENRES/GENRE_KEY/EMO）へ合流
 const CUSTOM_COLORS=["#7fb2e5","#f6a5c0","#9bd6b4","#f2c14e","#c9a0dc","#e59866","#82ccdd","#e77f9e","#a3cb8f","#d4a373"];
 const MAX_CUSTOM_CATEGORIES=10;
@@ -653,7 +664,7 @@ function renderDash(){
   const g={};bs.forEach(b=>g[b.genre]=(g[b.genre]||0)+1);
   const max=Math.max(...Object.values(g));
   document.getElementById("genreChart").innerHTML=`<svg viewBox="0 0 400 ${Object.keys(g).length*38+10}">`+
-    Object.entries(g).map(([k,v],i)=>{const w=v/max*250;const y=i*38+8;const gi=genreImg(k);
+    genreEntries(g).map(([k,v],i)=>{const w=v/max*250;const y=i*38+8;const gi=genreImg(k);
       const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="24" height="24"/><text x="30" y="${y+16}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+16}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
       return `${lbl}
       <rect x="110" y="${y+4}" width="${w}" height="18" rx="5" fill="${GENRES[k]}"/>
@@ -669,7 +680,7 @@ function renderDash(){
   // ジャンル別・平均満足度（お子さんの反応 0〜5）
   const ga={};bs.forEach(b=>{(ga[b.genre]=ga[b.genre]||[]).push(scoreOf(b));});
   document.getElementById("genreAvg").innerHTML=`<svg viewBox="0 0 460 ${Object.keys(ga).length*38+10}">`+
-    Object.entries(ga).map(([k,arr],i)=>{const av=arr.reduce((a,b)=>a+b,0)/arr.length;const w=av/MAXREACT*280;const y=i*38+8;const gi=genreImg(k);
+    genreEntries(ga).map(([k,arr],i)=>{const av=arr.reduce((a,b)=>a+b,0)/arr.length;const w=av/MAXREACT*280;const y=i*38+8;const gi=genreImg(k);
       const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="24" height="24"/><text x="30" y="${y+16}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+16}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
       return `${lbl}
       <rect x="120" y="${y+4}" width="${w}" height="18" rx="5" fill="${GENRES[k]}"/>
@@ -682,9 +693,9 @@ function renderCategoryPanel(){
   const box=document.getElementById("catManager"); if(!box)return;
   const cats=DB.categories||[];
   const list=cats.map((c,i)=>
-    `<div class="catrow"><button type="button" class="catrow-ic" title="アイコンを変更" onclick="openEditCategoryIcon(${i})">${genreIcon(c.name,"med")}</button>
+    `<div class="catrow"><button type="button" class="catrow-ic" title="変更" onclick="openEditCategory(${i})">${genreIcon(c.name,"med")}</button>
        <span class="catrow-name">${esc(c.name)}</span>
-       <button class="btn soft catrow-edit" onclick="openEditCategoryIcon(${i})">アイコン変更</button>
+       <button class="btn soft catrow-edit" onclick="openEditCategory(${i})">変更</button>
        <button class="btn ghost catrow-del" onclick="removeCategory(${i})">削除</button></div>`).join("");
   const canAdd=cats.length<MAX_CUSTOM_CATEGORIES;
   box.innerHTML=(cats.length?`<div class="catlist">${list}</div>`:`<div class="empty" style="padding:8px 0">まだありません</div>`)+
@@ -713,23 +724,30 @@ function catIconGrid(){
   for(let n=1;n<=10;n++){ icons+=`<button type="button" class="caticon" data-n="${n}" onclick="pickCatIcon(${n})"><img src="${CHARIMG["genre_add"+n]}" alt=""></button>`; }
   return icons;
 }
-function openEditCategoryIcon(i){
+function openEditCategory(i){
   const c=(DB.categories||[])[i]; if(!c)return;
   window.__editCatIndex=i; window.__newCatIcon=c.icon||1;
   const box=document.getElementById("modalBox"); box.onkeydown=null;
   box.innerHTML=
-    `<h3>アイコンを変更</h3>
-     <p class="sub">「${esc(c.name)}」のアイコンを選び直せます。</p>
-     <div class="field"><div class="caticons" id="catIcons">${catIconGrid()}</div></div>
-     <div class="mbtns"><button class="btn ghost" onclick="closeModal()">キャンセル</button><button class="btn primary" onclick="saveCategoryIcon()">保存する</button></div>`;
+    `<h3>カテゴリを変更</h3>
+     <div class="field"><label>カテゴリ名（10文字まで）</label><input id="catName" maxlength="10" autocomplete="off" value="${esc(c.name)}"></div>
+     <div class="field"><label>アイコンを選ぶ</label><div class="caticons" id="catIcons">${catIconGrid()}</div></div>
+     <div class="mbtns"><button class="btn ghost" onclick="closeModal()">キャンセル</button><button class="btn primary" onclick="saveCategoryEdit()">保存する</button></div>`;
   showOverlay();
   pickCatIcon(c.icon||1);
 }
-function saveCategoryIcon(){
+function saveCategoryEdit(){
   const i=window.__editCatIndex, cats=DB.categories||[], c=cats[i]; if(!c)return;
-  c.icon=window.__newCatIcon||1;
-  registerCategories(cats);                        // GENRE_KEY[name]="add"+icon を更新
-  save(DB); closeModal(); renderAll(); toast("アイコンを変更しました 🏷");
+  const oldName=c.name, newName=(document.getElementById("catName").value||"").trim();
+  if(!newName){toast("カテゴリ名を入力してください");return;}
+  if(newName!==oldName && GENRES[newName]){toast("その名前はすでに使われています");return;}
+  if(newName!==oldName){                            // 改名：使用中の本と旧登録も更新
+    DB.books.forEach(b=>{ if(b.genre===oldName)b.genre=newName; });
+    delete GENRES[oldName]; delete GENRE_KEY[oldName]; delete EMO[oldName];
+  }
+  c.name=newName; c.icon=window.__newCatIcon||1;
+  registerCategories(cats);
+  save(DB); closeModal(); renderAll(); toast("カテゴリを変更しました 🏷");
 }
 function addCategory(){
   const cats=DB.categories||(DB.categories=[]);
@@ -909,12 +927,12 @@ function captureCoverForm(){
   inp.click();
 }
 function bookForm(b,wish){
-  const g=b?b.genre:Object.keys(GENRES)[0];
+  const g=b?b.genre:genreOrder()[0];
   return `
-    <div class="field"><label>タイトル</label><input id="fTitle" placeholder="はらぺこあおむし" value="${b?esc(b.title):''}"></div>
+    <div class="field"><label>タイトル</label><input id="fTitle" placeholder="タイトル" value="${b?esc(b.title):''}"></div>
     <div class="field"><label>作者</label><input id="fAuthor" placeholder="エリック・カール" value="${b?esc(b.author):''}"></div>
     <div class="field half"><label>ISBN</label><input id="fIsbn" placeholder="9784..." value="${b&&b.isbn?esc(b.isbn):''}"></div>
-    <div class="field half"><label>ジャンル</label><select id="fGenre">${Object.keys(GENRES).map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join("")}</select></div>
+    <div class="field half"><label>ジャンル</label><select id="fGenre">${genreOrder().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join("")}</select></div>
     <div class="field"><label>表紙画像URL（任意・貼り付け可）</label><input id="fCover" placeholder="https://...（任意）" value="${b&&b.cover?esc(b.cover):''}"></div>
     <div class="field">
       <div class="coverbox" id="coverPrev">${coverBoxHtml(b?coverUrl(b):'')}</div></div>
@@ -1065,6 +1083,13 @@ function closeModal(){
 // 端末の「戻る（右→左スワイプ等）」：モーダルが開いていれば閉じる＝ページ離脱を防ぐ
 window.addEventListener("popstate",function(){
   if(__closingByCode){ __closingByCode=false; return; }
+  // 確認画面を表示中の「戻る」→ モーダルは閉じず、検索結果に戻す（モーダル状態は積み直す）
+  if(__confirmShowing){
+    __confirmShowing=false;
+    const box=document.getElementById("modalBox"); if(window.__searchViewHTML)box.innerHTML=window.__searchViewHTML;
+    try{ history.pushState({ehonModal:1},""); }catch(e){}
+    return;
+  }
   const ov=document.getElementById("overlay");
   if(ov&&ov.classList.contains("show")){ scannerStop(); ov.classList.remove("show"); fitModalToViewport(); }
 });
@@ -1289,15 +1314,42 @@ async function runTitleSearch(){
       <div class="info"><b>${esc(b.title)}</b><span>${esc(b.author||"作者不明")}</span></div>
     </div>`).join("");
 }
+let __confirmShowing=false;
+// 検索結果を選ぶ → 表紙を大きく出して確認（戻る＝検索結果へ、登録＝記録フォームへ）
 function pickSearchResult(i){
   const b=(window.__searchResults||[])[i]; if(!b)return;
+  window.__confirmBook=b;
+  window.__searchViewHTML=document.getElementById("modalBox").innerHTML;   // 検索結果画面を保存
+  __confirmShowing=true;
+  showConfirmBook(b);
+}
+function showConfirmBook(b){
+  const box=document.getElementById("modalBox"); box.onkeydown=null;
+  const cu=b.cover||(b.isbn?amznCover(b.isbn):"")||"";
+  box.innerHTML=
+    `<h3>この本でよいですか？</h3>
+     <div class="confirmbook">
+       ${cu?`<img class="confirmcover" src="${esc(cu)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'confirmcover noimg',textContent:'📖'}))">`:`<div class="confirmcover noimg">📖</div>`}
+       <div class="confirminfo"><b>${esc(b.title)}</b><span>${esc(b.author||"作者不明")}</span></div>
+     </div>
+     <div class="mbtns"><button class="btn ghost" onclick="backToSearchResults()">← 検索結果に戻る</button><button class="btn primary" onclick="registerConfirmedBook()">この本を登録</button></div>`;
+  box.scrollTop=0;
+}
+function backToSearchResults(){
+  __confirmShowing=false;
+  const box=document.getElementById("modalBox");
+  if(window.__searchViewHTML)box.innerHTML=window.__searchViewHTML;        // 検索結果を復元
+}
+function registerConfirmedBook(){
+  const b=window.__confirmBook; if(!b)return;
+  __confirmShowing=false;
   openAdd();                                   // 記録フォームを開いて自動入力
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||"";};
   set("fTitle",b.title);set("fAuthor",b.author);set("fIsbn",b.isbn);set("fCover",b.cover);
   const prev=document.getElementById("coverPrev");
   if(prev)prev.innerHTML=coverBoxHtml(b.cover||"");
   if(!b.isbn)backfillISBNCover(b.title,b.author);   // ISBN無しの本は、裏でISBN・表紙を補完
-  toast("候補を読み込みました。反応やジャンルを整えて記録してください 📖");
+  toast("反応やジャンルを整えて記録してください 📖");
 }
 // タイトル（＋著者）からISBNを引き当てる。①既知タイトル表 ②NDLの同名レコード（著者一致のみ採用）
 async function findISBNByTitle(title,author){
@@ -1444,12 +1496,12 @@ function isbnRetryBox(isbn){
 async function fillFromISBN(isbn){
   const setReading=on=>["fTitle","fAuthor"].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
-    if(on){ if(el.dataset.ph==null)el.dataset.ph=el.placeholder||""; el.value=""; el.placeholder="読み取り中…"; el.disabled=true; el.classList.add("reading"); }
+    if(on){ if(el.dataset.ph==null)el.dataset.ph=el.placeholder||""; el.value=""; el.placeholder="検索中…"; el.disabled=true; el.classList.add("reading"); }
     else{ el.disabled=false; el.classList.remove("reading"); if(el.dataset.ph!=null){el.placeholder=el.dataset.ph; delete el.dataset.ph;} }
   });
   setReading(true);
   const prev=document.getElementById("coverPrev");
-  if(prev)prev.innerHTML='<div class="cprevempty">📚 読み取り中…</div>';
+  if(prev)prev.innerHTML='<div class="cprevempty">📚 検索中…</div>';
   let meta=null; try{ meta=await lookupByISBN(isbn); }catch(e){}
   // フォームが閉じられていたら（保存/キャンセル済み）何もしない
   const overlay=document.getElementById("overlay"), ti=document.getElementById("fTitle");
@@ -1567,31 +1619,31 @@ function albumCSS(){return `
   *{box-sizing:border-box;margin:0}
   body{background:#efe9dd;color:#4a463f;
     font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .album-cover,.album-page{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;
-    padding:48px;page-break-inside:avoid;break-inside:avoid}
-  .album-page{page-break-before:always;break-before:page}   /* 各絵本を新しいページに（間の白紙を防ぐ） */
-  .album-cover{background:#e7ded0}
+  .album-cover{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px;background:#e7ded0}
+  /* 1ページに2冊：縦に並べる */
+  .album-page{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:20px;padding:26px 40px;page-break-before:always;break-before:page}
   .ac-inner{text-align:center;border:2px solid #b7a88c;border-radius:6px;padding:64px 48px;background:#f6f1e7;
     box-shadow:0 10px 40px rgba(120,100,70,.18)}
   .ac-inner .leaf{font-size:40px;color:#9aa88f;margin-bottom:16px}
   .ac-inner h1{font-size:44px;letter-spacing:4px;line-height:1.4;color:#5b5346}
   .ac-inner .sub{margin-top:20px;font-size:18px;color:#8a8067;letter-spacing:2px}
   .ac-inner .date{margin-top:8px;font-size:14px;color:#a49c86;letter-spacing:2px}
-  .frame{width:100%;max-width:640px;background:#f7f2e8;border:1px solid #ddd2bd;border-radius:8px;
-    box-shadow:0 12px 40px rgba(120,100,70,.16);padding:40px;text-align:center}
-  .frame .cover{display:flex;align-items:center;justify-content:center;margin-bottom:28px}
-  .frame .cover img{max-height:52vh;max-width:80%;border-radius:4px;box-shadow:0 14px 30px rgba(60,45,20,.28)}
-  .frame .cover .noimg{font-size:120px}
-  .frame .no{font-size:12px;letter-spacing:3px;color:#a99f88;margin-bottom:10px}
-  .frame h2{font-size:28px;color:#544c3f;line-height:1.4}
-  .frame .au{margin-top:8px;color:#8a8067;font-size:15px}
-  .frame .hr{width:56px;height:2px;background:#c9bfa6;margin:22px auto}
-  .frame .row{display:flex;justify-content:space-between;max-width:320px;margin:8px auto;font-size:14px;color:#6b6353}
+  .frame{width:100%;max-width:560px;background:#f7f2e8;border:1px solid #ddd2bd;border-radius:8px;
+    box-shadow:0 10px 30px rgba(120,100,70,.14);padding:22px 28px;text-align:center}
+  .frame .cover{display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+  .frame .cover img{max-height:26vh;max-width:58%;border-radius:4px;box-shadow:0 12px 24px rgba(60,45,20,.26)}
+  .frame .cover .noimg{font-size:66px}
+  .frame .no{font-size:11px;letter-spacing:3px;color:#a99f88;margin-bottom:6px}
+  .frame h2{font-size:22px;color:#544c3f;line-height:1.35}
+  .frame .au{margin-top:6px;color:#8a8067;font-size:14px}
+  .frame .hr{width:48px;height:2px;background:#c9bfa6;margin:14px auto}
+  .frame .row{display:flex;justify-content:space-between;max-width:300px;margin:5px auto;font-size:13px;color:#6b6353}
   .frame .row span{color:#a89e86}
   .frame .hearts{color:#c98a6a;letter-spacing:2px}
   .frame .hearts .hoff{color:#e3d8c4}
-  .frame .memo{margin:22px auto 0;max-width:400px;padding:16px 18px;background:#fbf7ef;border:1px solid #e7dcc6;
-    border-radius:8px;font-size:14px;line-height:1.9;color:#5f5747;text-align:left;font-style:italic}
+  .frame .memo{margin:12px auto 0;max-width:400px;max-height:4.8em;overflow:hidden;padding:12px 15px;background:#fbf7ef;border:1px solid #e7dcc6;
+    border-radius:8px;font-size:13px;line-height:1.6;color:#5f5747;text-align:left;font-style:italic}
   @page{size:A4;margin:0}
 `;}
 function exportAlbumPDF(){
@@ -1606,10 +1658,10 @@ function exportAlbumPDF(){
       <div class="sub">${books.length}冊のきろく</div>
       <div class="date">${dstr}</div>
     </div></section>`;
-  const pages=books.map((b,idx)=>{
+  const frameHTML=(b,idx)=>{
     const cu=coverUrl(b),sc=scoreOf(b);
     const hearts="&#9829;".repeat(sc)+'<span class="hoff">'+"&#9829;".repeat(5-sc)+"</span>";
-    return `<section class="album-page"><div class="frame">
+    return `<div class="frame">
         <div class="cover">${cu?`<img src="${esc(cu)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}</div>
         <div class="no">No.${idx+1}</div>
         <h2>${esc(b.title)}</h2>
@@ -1619,8 +1671,12 @@ function exportAlbumPDF(){
         <div class="row"><span>記録日</span><b>${esc(b.d)}</b></div>
         <div class="row"><span>おきにいり度</span><b class="hearts">${hearts}</b></div>
         ${b.memo?`<div class="memo">${esc(b.memo).replace(/\n/g,"<br>")}</div>`:""}
-      </div></section>`;
-  }).join("");
+      </div>`;
+  };
+  let pages="";                                    // 1ページに2冊ずつ
+  for(let i=0;i<books.length;i+=2){
+    pages+=`<section class="album-page">`+books.slice(i,i+2).map((b,j)=>frameHTML(b,i+j)).join("")+`</section>`;
+  }
   w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>えほんの思い出アルバム</title><style>'+albumCSS()+'</style></head><body>'+cover+pages+
     '<script>(function(){var imgs=[].slice.call(document.images),n=imgs.length,done=0;'+
     'function go(){if(++done>=n)setTimeout(function(){window.focus();window.print();},500);}'+
@@ -1664,10 +1720,10 @@ const TOUR_STEPS=[
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
   {enter:()=>tourNav("dash"), sel:'#navi button[data-t="dash"]', title:"ダッシュボード", body:"登録した冊数・お気に入りの数・ジャンル別の冊数などが見られます。<br><br>このページから<b>オリジナルのカテゴリ</b>も追加できます（最大10個・アイコンも選べます）。"},
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
-  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br>おすすめ順：<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
+  {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br><br>おすすめ順<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力<br><br>バーコード登録や検索ページの使い始めは、時間がかかったり、うまく検索できないことがあります。数回試すと早くなったり、見つかることが多いので、何回かお試しください🙇"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"ISBN検索のコツ", body:"ISBNは、絵本の<b>裏表紙や最後のページ</b>に書いてあることが多い番号です。<br><br>この番号で絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>見つからないときは通信状況の影響のことがあるので「🔎 再検索」を<b>5回ほど</b>お試しください。"},
-  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などの<b>表記ゆれ</b>でもヒットが変わります。うまく出ないときは表記を変えて試すのも有効です。<br><br>見つからない・<b>結果が少なすぎる</b>ときは、通信状況の影響のことがあります。<br>「🔎 再検索」を<b>5回ほど</b>お試しください。"},
-  {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"たくさん登録して、自分だけの本棚を楽しんでください。<br><br>絵本以外も登録できるので、お子さんが大きくなったら文庫本などの記録にも使えます。<br><br>この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
+  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"絵本以外の本もヒットするので、タイトル検索の場合は<b>正確に、できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などの<b>表記ゆれ</b>でもヒットが変わります。うまく出ないときは表記を変えて試すのも有効です。<br><br>見つからないときは通信状況が影響している可能性があるので、「🔎 再検索」を<b>5回ほど</b>お試しください。"},
+  {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"たくさん登録して、自分だけの本棚を楽しんでください😊<br><br>絵本以外も登録できるので、お子さんが大きくなったら文庫本などの記録にも使えます。<br><br>この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
 ];
 let __tourI=-1, __tourEls=null;
 function openTutorial(){ startTour(); }                 // 初回起動＆左上アイコンの入口
