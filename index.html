@@ -1591,7 +1591,6 @@ function startBarcodePhoto(){
   area.innerHTML=`
     <input type="file" accept="image/*" capture="environment" id="bcFile" style="display:none">
     <button class="btn primary" style="width:100%" onclick="document.getElementById('bcFile').click()">📷 バーコードを撮影／選択</button>
-    <div class="scanhint">978から始まるバーコードが大きく・はっきり写るように撮ってください</div>
     <div id="bcPreview" style="margin-top:12px"></div>`;
   document.getElementById("bcFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)decodeBarcodeImage(f);});
 }
@@ -1734,7 +1733,7 @@ function tourPlusRect(){
   return {left,top,width:right-left,height:bottom-top};
 }
 const TOUR_STEPS=[
-  {sel:null, title:"えほんログへようこそ！", body:"実際の画面に沿って使い方をご案内します。<br>「次へ」で進みます。"},
+  {sel:null, title:"えほんログへようこそ！", body:"実際の画面に沿って使い方をご案内します。"},
   {sel:"#tutBtn", title:"使い方はここから", body:"この案内は、<b>画面左上のこのアイコン</b>からいつでも見返せます。"},
   {enter:()=>tourNav("books"), sel:'#navi button[data-t="books"]', title:"本の記録", body:"読んだ絵本を記録するページです。"},
   {enter:()=>tourNav("wish"), sel:'#navi button[data-t="wish"]', title:"読みたい本", body:"これから読みたい絵本のリストです。絵本を開いて<b>「読んだ」ボタン</b>を押すと、「本の記録」ページに移せます。"},
@@ -1742,7 +1741,7 @@ const TOUR_STEPS=[
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
   {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br><br>おすすめ順<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"バーコード・ISBN検索のコツ", body:"バーコードやISBNは、絵本の<b>裏表紙や最後のページ</b>に載っています。<br><br>絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>最初は時間がかかる事があります。<br><br>バーコード読み取りやISBN検索が失敗した時は<b>3〜5回ほど</b>繰り返してみてください。"},
-  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"<b>※絵本以外の本もヒットします※</b><br><br>タイトル検索の場合は<b>できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などでヒットが変わるので、うまく出ないときは表記を変えてお試しください。<br><br>見つからないときは通信状況が影響している可能性があるので、「🔎 再検索」を<b>5回ほど</b>お試しください。"},
+  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, title:"タイトル検索のコツ", body:"<b>※絵本以外の本もヒットします※</b><br><br>タイトル検索の場合は<b>できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などでヒットが変わるので、うまく出ないときは表記を変えてお試しください。<br><br>見つからないときは通信状況が影響している可能性があるので、「🔎 再検索」を<b>3〜5回ほど</b>お試しください。"},
   {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"たくさん登録して、自分だけの本棚を楽しんでください😊<br><br>絵本以外も登録できるので、お子さんが大きくなったら文庫本などの記録にも使えます。<br><br>この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
 ];
 let __tourI=-1, __tourEls=null;
