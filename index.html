@@ -207,7 +207,7 @@ svg{max-width:100%;height:auto}
 .overlay{position:fixed;inset:0;background:rgba(60,50,35,.45);backdrop-filter:blur(5px);
   display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
 .overlay.show{display:flex}
-.modal{background:var(--panel);border-radius:22px;max-width:480px;width:100%;padding:30px;box-shadow:var(--shadow);animation:pop .25s;max-height:90vh;overflow:auto}
+.modal{background:var(--panel);border-radius:22px;max-width:480px;width:100%;padding:30px;box-shadow:var(--shadow);animation:pop .25s;max-height:90vh;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
 .modal h3{font-size:21px;margin-bottom:6px}
 .modaltitle{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -927,12 +927,12 @@ function captureCoverForm(){
   inp.click();
 }
 function bookForm(b,wish){
-  const g=b?b.genre:genreOrder()[0];
+  const g=b?b.genre:"";                              // 新規は空欄（ジャンル選択を必須に）
   return `
     <div class="field"><label>タイトル</label><input id="fTitle" placeholder="タイトル" value="${b?esc(b.title):''}"></div>
-    <div class="field"><label>作者</label><input id="fAuthor" placeholder="エリック・カール" value="${b?esc(b.author):''}"></div>
+    <div class="field"><label>作者</label><input id="fAuthor" placeholder="作者" value="${b?esc(b.author):''}"></div>
     <div class="field half"><label>ISBN</label><input id="fIsbn" placeholder="9784..." value="${b&&b.isbn?esc(b.isbn):''}"></div>
-    <div class="field half"><label>ジャンル</label><select id="fGenre">${genreOrder().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join("")}</select></div>
+    <div class="field half"><label>ジャンル</label><select id="fGenre"><option value="" disabled ${g?'':'selected'}>選んでください</option>${genreOrder().map(x=>`<option ${x===g?'selected':''}>${x}</option>`).join("")}</select></div>
     <div class="field"><label>表紙画像URL（任意・貼り付け可）</label><input id="fCover" placeholder="https://...（任意）" value="${b&&b.cover?esc(b.cover):''}"></div>
     <div class="field">
       <div class="coverbox" id="coverPrev">${coverBoxHtml(b?coverUrl(b):'')}</div></div>
@@ -961,8 +961,9 @@ function saveBook(i){
  try{
   const v=id=>{const el=document.getElementById(id);return el?el.value:"";};
   const t=v("fTitle").trim();if(!t){toast("タイトルを入力してください");return;}
+  const gsel=v("fGenre").trim();if(!gsel){toast("ジャンルを選んでください");return;}   // ジャンル選択必須
   const cl=(n,mx)=>Math.max(0,Math.min(mx,+v(n)||0));
-  const data={title:t,author:v("fAuthor").trim()||"（作者不明）",genre:v("fGenre")||"そのほか",
+  const data={title:t,author:v("fAuthor").trim()||"（作者不明）",genre:gsel,
     isbn:v("fIsbn").trim(),cover:v("fCover").trim(),memo:v("fMemo").trim(),
     f:{react:cl("fReact",MAXREACT)}};
   // 新規登録のときは重複をチェックし、あれば確認ダイアログを表示
@@ -1094,6 +1095,13 @@ window.addEventListener("popstate",function(){
   if(ov&&ov.classList.contains("show")){ scannerStop(); ov.classList.remove("show"); fitModalToViewport(); }
 });
 document.getElementById("overlay").onclick=e=>{if(e.target.id==="overlay")closeModal();};
+// スマホでキーパッドが出たとき、フォーカス中の入力欄を見える位置へスクロール（保存ボタンが隠れて押せない対策）
+document.getElementById("modalBox").addEventListener("focusin",function(e){
+  const t=e.target;
+  if(t&&t.matches&&t.matches("input,textarea,select")){
+    setTimeout(function(){ fitModalToViewport(); try{ t.scrollIntoView({block:"center"}); }catch(_){} },320);
+  }
+});
 
 /* ===== 検索結果パース用ユーティリティ ===== */
 function xmlUnesc(s){return (s||"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#10;/g,"\n").replace(/&amp;/g,"&");}
@@ -1445,7 +1453,7 @@ async function lookupByISBN(isbn){
     return null;
   })();
   const ndlP=(async()=>{
-    const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn,9000);
+    const r=await fetchT("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn+"&cnt=5",9000);   // &cnt が無いと NDL が失敗するため必須
     if(!r.ok)return null;
     const x=await r.text();
     const items=[...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m=>m[1]);
@@ -1619,31 +1627,31 @@ function albumCSS(){return `
   *{box-sizing:border-box;margin:0}
   body{background:#efe9dd;color:#4a463f;
     font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .album-cover{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px;background:#e7ded0}
-  /* 1ページに2冊：縦に並べる */
-  .album-page{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:20px;padding:26px 40px;page-break-before:always;break-before:page}
+  .album-cover,.album-page{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:48px;page-break-inside:avoid;break-inside:avoid}
+  .album-page{page-break-before:always;break-before:page}   /* 各絵本を新しいページに（間の白紙を防ぐ） */
+  .album-cover{background:#e7ded0}
   .ac-inner{text-align:center;border:2px solid #b7a88c;border-radius:6px;padding:64px 48px;background:#f6f1e7;
     box-shadow:0 10px 40px rgba(120,100,70,.18)}
   .ac-inner .leaf{font-size:40px;color:#9aa88f;margin-bottom:16px}
   .ac-inner h1{font-size:44px;letter-spacing:4px;line-height:1.4;color:#5b5346}
   .ac-inner .sub{margin-top:20px;font-size:18px;color:#8a8067;letter-spacing:2px}
   .ac-inner .date{margin-top:8px;font-size:14px;color:#a49c86;letter-spacing:2px}
-  .frame{width:100%;max-width:560px;background:#f7f2e8;border:1px solid #ddd2bd;border-radius:8px;
-    box-shadow:0 10px 30px rgba(120,100,70,.14);padding:22px 28px;text-align:center}
-  .frame .cover{display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-  .frame .cover img{max-height:26vh;max-width:58%;border-radius:4px;box-shadow:0 12px 24px rgba(60,45,20,.26)}
-  .frame .cover .noimg{font-size:66px}
-  .frame .no{font-size:11px;letter-spacing:3px;color:#a99f88;margin-bottom:6px}
-  .frame h2{font-size:22px;color:#544c3f;line-height:1.35}
-  .frame .au{margin-top:6px;color:#8a8067;font-size:14px}
-  .frame .hr{width:48px;height:2px;background:#c9bfa6;margin:14px auto}
-  .frame .row{display:flex;justify-content:space-between;max-width:300px;margin:5px auto;font-size:13px;color:#6b6353}
+  .frame{width:100%;max-width:640px;background:#f7f2e8;border:1px solid #ddd2bd;border-radius:8px;
+    box-shadow:0 12px 40px rgba(120,100,70,.16);padding:40px;text-align:center}
+  .frame .cover{display:flex;align-items:center;justify-content:center;margin-bottom:28px}
+  .frame .cover img{max-height:52vh;max-width:80%;border-radius:4px;box-shadow:0 14px 30px rgba(60,45,20,.28)}
+  .frame .cover .noimg{font-size:120px}
+  .frame .no{font-size:12px;letter-spacing:3px;color:#a99f88;margin-bottom:10px}
+  .frame h2{font-size:28px;color:#544c3f;line-height:1.4}
+  .frame .au{margin-top:8px;color:#8a8067;font-size:15px}
+  .frame .hr{width:56px;height:2px;background:#c9bfa6;margin:22px auto}
+  .frame .row{display:flex;justify-content:space-between;max-width:320px;margin:8px auto;font-size:14px;color:#6b6353}
   .frame .row span{color:#a89e86}
   .frame .hearts{color:#c98a6a;letter-spacing:2px}
   .frame .hearts .hoff{color:#e3d8c4}
-  .frame .memo{margin:12px auto 0;max-width:400px;max-height:4.8em;overflow:hidden;padding:12px 15px;background:#fbf7ef;border:1px solid #e7dcc6;
-    border-radius:8px;font-size:13px;line-height:1.6;color:#5f5747;text-align:left;font-style:italic}
+  .frame .memo{margin:22px auto 0;max-width:400px;padding:16px 18px;background:#fbf7ef;border:1px solid #e7dcc6;
+    border-radius:8px;font-size:14px;line-height:1.9;color:#5f5747;text-align:left;font-style:italic}
   @page{size:A4;margin:0}
 `;}
 function exportAlbumPDF(){
@@ -1673,10 +1681,7 @@ function exportAlbumPDF(){
         ${b.memo?`<div class="memo">${esc(b.memo).replace(/\n/g,"<br>")}</div>`:""}
       </div>`;
   };
-  let pages="";                                    // 1ページに2冊ずつ
-  for(let i=0;i<books.length;i+=2){
-    pages+=`<section class="album-page">`+books.slice(i,i+2).map((b,j)=>frameHTML(b,i+j)).join("")+`</section>`;
-  }
+  const pages=books.map((b,idx)=>`<section class="album-page">${frameHTML(b,idx)}</section>`).join("");   // 1ページ1冊
   w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>えほんの思い出アルバム</title><style>'+albumCSS()+'</style></head><body>'+cover+pages+
     '<script>(function(){var imgs=[].slice.call(document.images),n=imgs.length,done=0;'+
     'function go(){if(++done>=n)setTimeout(function(){window.focus();window.print();},500);}'+
