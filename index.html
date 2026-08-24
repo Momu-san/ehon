@@ -114,6 +114,8 @@ button{font-family:inherit;cursor:pointer}
 .favrow-info b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .favrow-au{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .favlist{max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.favallbtn .icn{width:20px;height:20px;vertical-align:-4px;margin-right:2px}
+#modalBox h3 .icn{width:24px;height:24px;vertical-align:-4px;margin-right:4px}
 /* 初回機能チップ（バーコード/タイトル検索の初回説明） */
 .feattip p{margin:0;font-size:15px;line-height:1.9;color:var(--ink)}
 .feattip p b{color:var(--accent-deep)}
@@ -684,7 +686,7 @@ function renderDash(){
   const allFavs=bs.filter(b=>b.fav).sort((a,b)=>scoreOf(b)-scoreOf(a));
   document.getElementById("recentFav").innerHTML=
     (allFavs.length?allFavs.slice(0,4).map(favRowHTML).join(""):'<div class="empty" style="padding:8px 0">まだありません</div>')+
-    (allFavs.length>4?`<button class="btn ghost" style="width:100%;margin-top:12px" onclick="openAllFavorites()">💛 全部見る（${allFavs.length}冊）</button>`:"");
+    (allFavs.length>4?`<button class="btn ghost favallbtn" style="width:100%;margin-top:12px" onclick="openAllFavorites()">${icon("heart")||"💛"} 全部見る（${allFavs.length}冊）</button>`:"");
 
   // ジャンル別・平均満足度（お子さんの反応 0〜5）
   const ga={};bs.forEach(b=>{(ga[b.genre]=ga[b.genre]||[]).push(scoreOf(b));});
@@ -707,7 +709,7 @@ function favRowHTML(b){ const gi=DB.books.indexOf(b);
 function openAllFavorites(){
   const favs=DB.books.filter(b=>b.fav&&!b.wish).sort((a,b)=>scoreOf(b)-scoreOf(a));
   const box=document.getElementById("modalBox"); box.onkeydown=null;
-  box.innerHTML=`<h3>💛 お気に入り（${favs.length}冊）</h3>
+  box.innerHTML=`<h3>${icon("heart")||"💛"} お気に入り（${favs.length}冊）</h3>
      <div class="favlist">${favs.length?favs.map(favRowHTML).join(""):'<div class="empty" style="padding:10px 0">まだありません</div>'}</div>
      <div class="mbtns"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`;
   showOverlay();
@@ -1334,7 +1336,7 @@ document.addEventListener("click",e=>{                    // メニュー外ク�
 function openSearchAdd(q){
   const box=document.getElementById("modalBox");box.onkeydown=null;
   box.innerHTML=
-    `<h3>ISBN/タイトルで探して記録</h3><p class="sub">ISBNやタイトルを入れて探せます。タイトルは正確に、できるだけ最後まで入力すると見つかりやすくなります。表記ゆれ（かな・漢字、スペースの有無、英語表記など）でヒットが変わることがあります。</p>
+    `<h3>ISBN/タイトルで探して記録</h3><p class="sub">タイトルは正確に、できるだけ最後まで入力すると見つかりやすくなります。かな・漢字、スペースの有無、英語表記などでヒットが変わることがあります。</p>
      <div class="findrow">
        <div class="field" style="flex:1;margin:0"><input id="sQ" placeholder="例：9784834000825" autocomplete="off" value="${q?esc(q):''}"></div>
        <button id="sBtn" class="btn primary" onclick="runTitleSearch()">🔎 検索</button>
@@ -1767,7 +1769,7 @@ const TOUR_STEPS=[
   {enter:()=>tourNav("batch"), sel:'#navi button[data-t="batch"]', title:"アルバム・保存", body:"思い出アルバムづくりと、データのバックアップ（保存・復元）ができます。"},
   {enter:tourOpenMenu, rect:tourPlusRect, title:"絵本の登録", body:"右上の ＋ から登録します。<br><br>おすすめ順<br><b>① バーコード</b>（一番かんたん・正確）<br><b>② ISBN</b><br><b>③ タイトル検索</b><br>④ 手入力"},
   {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.isbn, title:"バーコード・ISBN検索のコツ", body:"バーコードやISBNは、絵本の<b>裏表紙や最後のページ</b>に載っています。<br><br>絵本を<b>ピンポイントで特定できる</b>ので、タイトル検索より正確です。<br><br>最初は時間がかかる事があります。<br><br>バーコード読み取りやISBN検索が失敗した時は<b>3〜5回ほど</b>繰り返してみてください。"},
-  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.title_search, title:"タイトル検索のコツ", body:"<b>※絵本以外の本もヒットします※</b><br><br>タイトル検索の場合は<b>できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などでヒットが変わるので、うまく出ないときは表記を変えてお試しください。<br><br>見つからないときは通信状況が影響している可能性があるので、「🔎 再検索」を<b>3〜5回ほど</b>お試しください。"},
+  {enter:()=>{try{closeAddMenu();}catch(e){} tourNav("books");}, sel:null, img:CHARIMG.title_search, title:"タイトル検索のコツ", body:"<b style=\"color:var(--ink)\">※絵本以外の本もヒットします※</b><br><br>タイトル検索の場合は<b>できるだけ最後まで</b>入力してください。<br><br>かな・漢字・スペースの有無・英語表記などでヒットが変わるので、うまく出ないときは表記を変えてお試しください。<br><br>見つからないときは通信状況が影響している可能性があるので、「🔎 再検索」を<b>3〜5回ほど</b>お試しください。"},
   {enter:()=>{tourNav("books");}, sel:null, title:"準備OK！", body:"たくさん登録して、自分だけの本棚を楽しんでください😊<br><br>絵本以外も登録できるので、お子さんが大きくなったら文庫本などの記録にも使えます。<br><br>この案内は<b>左上のアイコン</b>からいつでも見返せます。"}
 ];
 let __tourI=-1, __tourEls=null;
