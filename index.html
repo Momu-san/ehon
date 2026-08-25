@@ -937,7 +937,9 @@ function coverPrevHtml(url){return url
   ?`<img src="${esc(url)}" class="cprev" onload="if(this.naturalWidth<=2)coverBoxFail('画像が見つかりませんでした')" onerror="coverBoxFail('画像を読み込めませんでした')">`
   :`<div class="cprevempty">表紙画像なし</div>`;}
 // フォームの表紙ボックス：表紙が無い／読み込めないときは撮影ボタンを表示
-function coverBoxFailHTML(msg){return `<div class="cprevempty" style="margin-bottom:8px">${msg}</div><button type="button" class="btn soft dcapbtn" onclick="captureCoverForm()">📷 表紙を撮影する</button>`;}
+function coverBoxFailHTML(msg){return `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+    <div class="cprevempty">${msg}</div>
+    <button type="button" class="btn soft dcapbtn" onclick="captureCoverForm()">📷 表紙を撮影する</button></div>`;}
 function coverBoxFail(msg){const box=document.getElementById("coverPrev"); if(box)box.innerHTML=coverBoxFailHTML(msg||"画像が見つかりませんでした");}
 function coverBoxHtml(url){return url ? coverPrevHtml(url) : coverBoxFailHTML("表紙画像なし");}
 function captureCoverForm(){
@@ -1367,7 +1369,7 @@ async function runTitleSearch(){
   }
   window.__searchResults=results;
   if(netErr&&!results.length){box.innerHTML='<div class="cprevempty">📶 通信できませんでした。ネットワーク接続を確認して、もう一度お試しください。</div>';return;}
-  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした（自動で'+MAXTRY+'回試しました）。言葉を変えると見つかることがあります。</div>';return;}
+  if(!results.length){box.innerHTML='<div class="cprevempty">見つかりませんでした（自動で'+MAXTRY+'回試しました）。表記を変えると見つかることがあります。</div>';return;}
   box.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">件数が少ないときは、もう一度お試しください。</div>'+results.map((b,i)=>
     `<div class="sresult" role="button" tabindex="0" onclick="pickSearchResult(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickSearchResult(${i});}">
       ${b.cover?`<img src="${esc(b.cover)}" onload="if(this.naturalWidth<=2)this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'📖'}))">`:`<div class="noimg">📖</div>`}
