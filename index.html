@@ -107,12 +107,21 @@ button{font-family:inherit;cursor:pointer}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:22px}
 .panel h3{font-size:17px;font-weight:800;margin-bottom:16px}
 .pdesc{color:var(--muted);font-size:13px;margin:-8px 0 16px}
-/* ジャンル選択チップ（登録フォーム） */
-.genrepick{display:flex;flex-wrap:wrap;gap:8px}
-.gchip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--panel);border-radius:99px;padding:7px 14px 7px 10px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;transition:.15s;line-height:1}
-.gchip .icn{width:20px;height:20px;flex:none}
-.gchip .icn-emo{font-size:16px}
-.gchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-deep)}
+/* ジャンル選択：カスタム・プルダウン（登録フォーム） */
+.genresel{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;border-radius:11px;border:1px solid var(--line);background:var(--bg);font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.genresel-label{display:inline-flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.genresel-label .icn{width:22px;height:22px;flex:none}
+.genresel-label .icn-emo{font-size:18px}
+.genresel-ph{color:var(--muted)}
+.genresel-arrow{color:var(--muted);font-size:11px;flex:none;transition:transform .15s}
+.genresel.open .genresel-arrow{transform:rotate(180deg)}
+.genrelist{margin-top:6px;border:1px solid var(--line);border-radius:11px;background:var(--panel);max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 8px 20px rgba(150,115,70,.12)}
+.glist-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:11px 13px;font-size:14px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line)}
+.glist-item:last-child{border-bottom:none}
+.glist-item .icn{width:22px;height:22px;flex:none}
+.glist-item .icn-emo{font-size:18px}
+.glist-item:hover,.glist-item.on{background:var(--accent-soft)}
+.glist-item.on{color:var(--accent-deep);font-weight:800}
 /* お気に入り行（ダッシュボード＆全部見る） */
 .favrow{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:8px;transition:background .12s}
 .favrow:hover,.favrow:focus{background:var(--bg);outline:none}
@@ -967,7 +976,8 @@ function bookForm(b,wish){
     <div class="field"><label>ISBN</label><input id="fIsbn" placeholder="9784..." value="${b&&b.isbn?esc(b.isbn):''}"></div>
     <div class="field"><label>ジャンル</label>
       <input type="hidden" id="fGenre" value="${g?esc(g):''}">
-      <div class="genrepick" id="genrePick">${genreOrder().map(x=>`<button type="button" class="gchip${x===g?' on':''}" data-g="${esc(x)}" onclick="pickGenre(this)">${genreIcon(x)}<span>${esc(x)}</span></button>`).join("")}</div>
+      <button type="button" class="genresel" id="genreSelBtn" onclick="toggleGenreList()"><span class="genresel-label" id="genreSelLabel">${genreLabelHTML(g)}</span><span class="genresel-arrow">▼</span></button>
+      <div class="genrelist" id="genreList" hidden>${genreOrder().map(x=>`<button type="button" class="glist-item${x===g?' on':''}" data-g="${esc(x)}" onclick="pickGenre(this)">${genreIcon(x)}<span>${esc(x)}</span></button>`).join("")}</div>
     </div>
     <div class="field"><label>表紙画像URL（任意・貼り付け可）</label><input id="fCover" placeholder="https://...（任意）" value="${b&&b.cover?esc(b.cover):''}"></div>
     <div class="field">
@@ -975,11 +985,21 @@ function bookForm(b,wish){
     ${wish?'':`<div class="field"><label>お子さんの反応（0〜5）</label><input id="fReact" type="number" value="${b?scoreOf(b):3}" min="0" max="5"></div>`}
     <div class="field"><label>メモ（任意）</label><textarea id="fMemo" rows="3" placeholder="${wish?'読みたい理由や、すすめられた人など':'読んだ日の様子や、お子さんの反応など'}">${b&&b.memo?esc(b.memo):''}</textarea></div>`;
 }
-// ジャンルのチップ選択（ネイティブselectの見切れ回避）。選択値は hidden #fGenre に保存
+// ジャンルのカスタム・プルダウン（ネイティブselectの見切れ回避）。選択値は hidden #fGenre に保存
+function genreLabelHTML(g){ return g ? (genreIcon(g)+"<span>"+esc(g)+"</span>") : '<span class="genresel-ph">選んでください</span>'; }
+function toggleGenreList(){
+  const list=document.getElementById("genreList"), btn=document.getElementById("genreSelBtn"); if(!list)return;
+  if(list.hasAttribute("hidden")){ list.removeAttribute("hidden"); if(btn)btn.classList.add("open");
+    setTimeout(function(){ try{ list.scrollIntoView({block:"nearest"}); }catch(_){} },30); }
+  else { list.setAttribute("hidden",""); if(btn)btn.classList.remove("open"); }
+}
 function pickGenre(btn){
-  document.querySelectorAll("#genrePick .gchip").forEach(el=>el.classList.remove("on"));
-  btn.classList.add("on");
   const fg=document.getElementById("fGenre"); if(fg)fg.value=btn.dataset.g||"";
+  document.querySelectorAll("#genreList .glist-item").forEach(el=>el.classList.remove("on"));
+  btn.classList.add("on");
+  const lbl=document.getElementById("genreSelLabel"); if(lbl)lbl.innerHTML=genreLabelHTML(btn.dataset.g);
+  const list=document.getElementById("genreList"), sb=document.getElementById("genreSelBtn");
+  if(list)list.setAttribute("hidden",""); if(sb)sb.classList.remove("open");
 }
 function openBookModal(i){
   const b=i>=0?DB.books[i]:null;
