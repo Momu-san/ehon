@@ -468,7 +468,6 @@ img.chr{object-fit:contain}
       </div>
       <div class="panel"><h3>ジャンル別・平均満足度（お子さんの反応）</h3><div id="genreAvg"></div></div>
       <div class="panel"><h3>オリジナルカテゴリ</h3>
-        <p class="pdesc">よく使うジャンルを自分で追加できます（最大10個）。追加すると絵本の登録時に選べます。</p>
         <div id="catManager"></div></div>
     </section>
 
@@ -950,10 +949,10 @@ function coverPrevHtml(url){return url
   :`<div class="cprevempty">表紙画像なし</div>`;}
 // フォームの表紙ボックス：表紙が無い／読み込めないときは撮影ボタンを表示
 function coverBoxFailHTML(msg){return `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
-    <div class="cprevempty">${msg}</div>
+    ${msg?`<div class="cprevempty">${msg}</div>`:''}
     <button type="button" class="btn soft dcapbtn" onclick="captureCoverForm()">📷 表紙を撮影する</button></div>`;}
 function coverBoxFail(msg){const box=document.getElementById("coverPrev"); if(box)box.innerHTML=coverBoxFailHTML(msg||"画像が見つかりませんでした");}
-function coverBoxHtml(url){return url ? coverPrevHtml(url) : coverBoxFailHTML("表紙画像なし");}
+function coverBoxHtml(url){return url ? coverPrevHtml(url) : coverBoxFailHTML("");}
 function captureCoverForm(){
   const inp=document.createElement("input");
   inp.type="file";inp.accept="image/*";inp.setAttribute("capture","environment");
@@ -989,8 +988,7 @@ function bookForm(b,wish){
 function genreLabelHTML(g){ return g ? (genreIcon(g)+"<span>"+esc(g)+"</span>") : '<span class="genresel-ph">選んでください</span>'; }
 function toggleGenreList(){
   const list=document.getElementById("genreList"), btn=document.getElementById("genreSelBtn"); if(!list)return;
-  if(list.hasAttribute("hidden")){ list.removeAttribute("hidden"); if(btn)btn.classList.add("open");
-    setTimeout(function(){ try{ list.scrollIntoView({block:"nearest"}); }catch(_){} },30); }
+  if(list.hasAttribute("hidden")){ list.removeAttribute("hidden"); if(btn)btn.classList.add("open"); }
   else { list.setAttribute("hidden",""); if(btn)btn.classList.remove("open"); }
 }
 function pickGenre(btn){
