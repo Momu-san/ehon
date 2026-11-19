@@ -470,7 +470,7 @@ img.chr{object-fit:contain}
       <div class="kpis" id="kpis"></div>
       <div class="row2">
         <div class="panel"><h3>最近のお気に入り</h3><div id="recentFav"></div></div>
-        <div class="panel"><h3>ジャンル別の冊数・満足度</h3><p class="pdesc" style="margin:-4px 0 10px">棒＝冊数／★＝平均満足度（5点満点）</p><div id="genreChart"></div></div>
+        <div class="panel"><h3>ジャンル別の冊数・満足度</h3><p class="pdesc" style="margin:-4px 0 10px">棒＝平均満足度（5点満点）／数字＝冊数</p><div id="genreChart"></div></div>
       </div>
       <div class="panel"><h3>オリジナルカテゴリ</h3>
         <div id="catManager"></div></div>
@@ -695,14 +695,15 @@ function renderDash(){
   const g={};bs.forEach(b=>g[b.genre]=(g[b.genre]||0)+1);
   const max=Math.max(...Object.values(g));
   const gaMap={};bs.forEach(b=>{(gaMap[b.genre]=gaMap[b.genre]||[]).push(scoreOf(b));});   // ジャンル別の満足度
-  document.getElementById("genreChart").innerHTML=`<svg viewBox="0 0 480 ${Object.keys(g).length*40+8}">`+
-    genreEntries(g).map(([k,v],i)=>{const y=i*40+6;const w=v/max*200;const gi=genreImg(k);
-      const arr=gaMap[k]||[];const av=arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1):"-";
-      const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="26" height="26"/><text x="34" y="${y+18}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+18}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
+  document.getElementById("genreChart").innerHTML=`<svg viewBox="0 0 480 ${Object.keys(g).length*44+8}">`+
+    genreEntries(g).map(([k,v],i)=>{const y=i*44+6;const gi=genreImg(k);
+      const arr=gaMap[k]||[];const av=arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length):0;const avT=av.toFixed(1);
+      const w=av/MAXREACT*190;                                       // 棒＝満足度（0〜5）
+      const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="28" height="28"/><text x="36" y="${y+21}" font-size="15" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+21}" font-size="15" fill="#4a4038">${EMO[k]} ${k}</text>`;
       return `${lbl}
-      <rect x="116" y="${y+5}" width="${w}" height="16" rx="5" fill="${GENRES[k]}"/>
-      <text x="${122+w}" y="${y+18}" font-size="12" font-weight="700" fill="#8a857c">${v}冊</text>
-      <text x="476" y="${y+18}" text-anchor="end" font-size="13.5" font-weight="800" fill="#f0a500">★${av}</text>`;}).join("")+`</svg>`;
+      <rect x="120" y="${y+6}" width="${w}" height="17" rx="5" fill="${GENRES[k]}"/>
+      <text x="${126+w}" y="${y+21}" font-size="14" font-weight="800" fill="#f0a500">★${avT}</text>
+      <text x="478" y="${y+21}" text-anchor="end" font-size="15" font-weight="800" fill="#5b5346">${v}冊</text>`;}).join("")+`</svg>`;
 
   const allFavs=bs.filter(b=>b.fav).sort((a,b)=>scoreOf(b)-scoreOf(a));
   document.getElementById("recentFav").innerHTML=
