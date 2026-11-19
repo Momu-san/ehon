@@ -470,9 +470,8 @@ img.chr{object-fit:contain}
       <div class="kpis" id="kpis"></div>
       <div class="row2">
         <div class="panel"><h3>最近のお気に入り</h3><div id="recentFav"></div></div>
-        <div class="panel"><h3>ジャンル別の冊数</h3><div id="genreChart"></div></div>
+        <div class="panel"><h3>ジャンル別の冊数・満足度</h3><p class="pdesc" style="margin:-4px 0 10px">棒＝冊数／★＝平均満足度（5点満点）</p><div id="genreChart"></div></div>
       </div>
-      <div class="panel"><h3>ジャンル別・平均満足度（お子さんの反応）</h3><div id="genreAvg"></div></div>
       <div class="panel"><h3>オリジナルカテゴリ</h3>
         <div id="catManager"></div></div>
     </section>
@@ -684,7 +683,6 @@ function renderDash(){
     ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="n">${k[1]}</div></div>`).join("");
     document.getElementById("recentFav").innerHTML='<div class="empty" style="padding:8px 0">まだありません</div>';
     document.getElementById("genreChart").innerHTML='<div class="empty">まだ記録がありません</div>';
-    document.getElementById("genreAvg").innerHTML='<div class="empty">まだ記録がありません</div>';
     return;
   }
   const favN=bs.filter(b=>b.fav).length;
@@ -696,26 +694,21 @@ function renderDash(){
 
   const g={};bs.forEach(b=>g[b.genre]=(g[b.genre]||0)+1);
   const max=Math.max(...Object.values(g));
-  document.getElementById("genreChart").innerHTML=`<svg viewBox="0 0 400 ${Object.keys(g).length*38+10}">`+
-    genreEntries(g).map(([k,v],i)=>{const w=v/max*250;const y=i*38+8;const gi=genreImg(k);
-      const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="24" height="24"/><text x="30" y="${y+16}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+16}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
+  const gaMap={};bs.forEach(b=>{(gaMap[b.genre]=gaMap[b.genre]||[]).push(scoreOf(b));});   // ジャンル別の満足度
+  document.getElementById("genreChart").innerHTML=`<svg viewBox="0 0 480 ${Object.keys(g).length*40+8}">`+
+    genreEntries(g).map(([k,v],i)=>{const y=i*40+6;const w=v/max*200;const gi=genreImg(k);
+      const arr=gaMap[k]||[];const av=arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1):"-";
+      const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="26" height="26"/><text x="34" y="${y+18}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+18}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
       return `${lbl}
-      <rect x="110" y="${y+4}" width="${w}" height="18" rx="5" fill="${GENRES[k]}"/>
-      <text x="${118+w}" y="${y+18}" font-size="12" font-weight="700" fill="#8a857c">${v}</text>`;}).join("")+`</svg>`;
+      <rect x="116" y="${y+5}" width="${w}" height="16" rx="5" fill="${GENRES[k]}"/>
+      <text x="${122+w}" y="${y+18}" font-size="12" font-weight="700" fill="#8a857c">${v}冊</text>
+      <text x="476" y="${y+18}" text-anchor="end" font-size="13.5" font-weight="800" fill="#f0a500">★${av}</text>`;}).join("")+`</svg>`;
 
   const allFavs=bs.filter(b=>b.fav).sort((a,b)=>scoreOf(b)-scoreOf(a));
   document.getElementById("recentFav").innerHTML=
     (allFavs.length?allFavs.slice(0,4).map(favRowHTML).join(""):'<div class="empty" style="padding:8px 0">まだありません</div>')+
     (allFavs.length>4?`<button class="btn ghost favallbtn" style="width:100%;margin-top:12px" onclick="openAllFavorites()">${icon("heart")||"💛"} 全部見る（${allFavs.length}冊）</button>`:"");
 
-  // ジャンル別・平均満足度（お子さんの反応 0〜5）
-  const ga={};bs.forEach(b=>{(ga[b.genre]=ga[b.genre]||[]).push(scoreOf(b));});
-  document.getElementById("genreAvg").innerHTML=`<svg viewBox="0 0 460 ${Object.keys(ga).length*38+10}">`+
-    genreEntries(ga).map(([k,arr],i)=>{const av=arr.reduce((a,b)=>a+b,0)/arr.length;const w=av/MAXREACT*280;const y=i*38+8;const gi=genreImg(k);
-      const lbl=gi?`<image href="${gi}" x="0" y="${y}" width="24" height="24"/><text x="30" y="${y+16}" font-size="13" fill="#4a4038">${k}</text>`:`<text x="0" y="${y+16}" font-size="13" fill="#4a4038">${EMO[k]} ${k}</text>`;
-      return `${lbl}
-      <rect x="120" y="${y+4}" width="${w}" height="18" rx="5" fill="${GENRES[k]}"/>
-      <text x="${128+w}" y="${y+18}" font-size="12" font-weight="700" fill="#8a857c">${av.toFixed(1)}</text>`;}).join("")+`</svg>`;
 
 }
 
